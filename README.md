@@ -8,7 +8,12 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 |-------|-----|--------|
 | Raspberry Pi Zero 2W + GPi Case | BCM2710 | ✅ Complete |
 | Raspberry Pi 4B / CM4 | BCM2711 | ✅ Complete |
-| Radxa Rock 2A | RK3528A | ✅ Complete |
+| Raspberry Pi 5 / CM5 | BCM2712 | ❌ InComplete |
+| Radxa Rock 2A | RK3528A | ❌ InComplete |
+| Libre Iota | ??? | ❌ InComplete |
+| Orange Pi RV 2 | ??? | ❌ InComplete |
+| Libre Le Potato | AML-s905X-CC | ❌ InComplete |
+
 
 ## Directory Structure
 
