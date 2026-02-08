@@ -1,0 +1,60 @@
+# Raspberry Pi CM5 IO Board - Tutorial-OS Boot Configuration
+# ==========================================================
+#
+# Place this file on the FAT32 boot partition as config.txt
+
+# ============================================
+# CORE SETTINGS
+# ============================================
+
+# Boot in 64-bit mode
+arm_64bit=1
+
+# Disable GPU firmware kernel loading (we load our own)
+kernel=kernel8.img
+
+# Disable command line (bare metal, no Linux)
+# cmdline=
+
+# ============================================
+# MEMORY CONFIGURATION
+# ============================================
+
+# Give ARM maximum memory (minimum to GPU)
+gpu_mem=16
+
+# ============================================
+# UART CONSOLE
+# ============================================
+
+# Enable UART for debugging
+enable_uart=1
+
+# Use miniUART on GPIO 14/15 (directly accessible, not through RP1)
+# Note: BCM2712/Pi5 has different UART routing than Pi4
+
+# ============================================
+# DISPLAY (DPI) CONFIGURATION
+# ============================================
+
+# Enable DPI output if using parallel RGB display
+# Uncomment for DPI displays:
+# dtoverlay=vc4-kms-dpi-generic
+# gpio=0-27=a2
+
+# ============================================
+# CM5-SPECIFIC SETTINGS
+# ============================================
+
+# Disable Bluetooth (frees up UART)
+dtoverlay=disable-bt
+
+# Disable WiFi if not needed
+# dtoverlay=disable-wifi
+
+# ============================================
+# BOOT DELAY
+# ============================================
+
+# No boot delay
+boot_delay=0

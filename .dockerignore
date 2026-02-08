@@ -1,0 +1,30 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.img
+*.bin
+*.list
+
+# Output directory (mounted separately)
+output/
+
+# Git
+.git/
+.gitignore
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker (don't include these in the image)
+Dockerfile
+docker-compose.yml
+.dockerignore

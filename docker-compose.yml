@@ -1,0 +1,58 @@
+# Tutorial-OS Docker Compose Configuration
+#
+# Usage:
+#   docker-compose run --rm build              # Build all boards
+#   docker-compose run --rm build rpi-zero2w-gpi   # Build specific board
+#   docker-compose run --rm shell              # Interactive shell
+#
+# Or use profiles:
+#   docker-compose --profile dev up            # Development shell
+
+services:
+  # Main build service
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tutorial-os-builder
+    volumes:
+      - ./output:/output
+    # Default: build all boards
+    # Override with: docker-compose run --rm build <board>
+
+  # Development shell
+  shell:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tutorial-os-builder
+    volumes:
+      - ./output:/output
+      - .:/src:ro  # Mount source read-only for inspection
+    entrypoint: /bin/bash
+    stdin_open: true
+    tty: true
+    profiles:
+      - dev
+
+  # Watch mode (rebuild on file changes) - requires inotify-tools
+  watch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tutorial-os-builder
+    volumes:
+      - ./output:/output
+      - .:/src:ro
+    entrypoint: >
+      bash -c "
+        echo 'Watching for changes... (Ctrl+C to stop)';
+        while true; do
+          /usr/local/bin/build.sh all;
+          echo '';
+          echo 'Waiting for changes...';
+          inotifywait -r -e modify,create,delete /src --exclude '/src/(build|output|\.git)' 2>/dev/null || sleep 5;
+        done
+      "
+    profiles:
+      - dev

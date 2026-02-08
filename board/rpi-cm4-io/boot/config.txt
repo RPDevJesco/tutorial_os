@@ -1,0 +1,142 @@
+# =============================================================================
+# config.txt - Raspberry Pi Compute Module 4
+# Carrier Board: Waveshare CM4-IO-BASE-A
+# =============================================================================
+# Place this file at /boot/firmware/config.txt (Bookworm+)
+# or /boot/config.txt (Bullseye and earlier)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Core Settings
+# -----------------------------------------------------------------------------
+# Enable 64-bit kernel (recommended for CM4)
+arm_64bit=1
+
+# Use the ARM stub for multicore support
+# This file MUST be present on the SD card!
+armstub=armstub8.bin
+
+# Explicit kernel name
+kernel=kernel8.img
+
+# Automatically load overlays for detected cameras, displays, etc.
+camera_auto_detect=1
+display_auto_detect=1
+
+# Enable DRM VC4 V3D driver
+# NOTE: If using DSI displays, change to dtoverlay=vc4-fkms-v3d
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+
+# Disable compensation for displays with overscan
+disable_overscan=1
+
+# Run as fast as firmware allows
+arm_boost=1
+
+# -----------------------------------------------------------------------------
+# Memory / GPU
+# -----------------------------------------------------------------------------
+# GPU memory split (MB) - adjust based on your use case
+# 128 is a good starting point; increase for video/camera workloads
+gpu_mem=128
+
+# -----------------------------------------------------------------------------
+# USB 2.0 Host Mode (CRITICAL for CM4-IO-BASE-A)
+# -----------------------------------------------------------------------------
+# USB is DISABLED by default on CM4 to save power.
+# The dwc2 overlay with dr_mode=host enables the USB 2.0 ports.
+dtoverlay=dwc2,dr_mode=host
+
+# -----------------------------------------------------------------------------
+# HDMI
+# -----------------------------------------------------------------------------
+# Dual HDMI is supported on the CM4-IO-BASE-A.
+# HDMI0 is active by default. HDMI1 requires the secondary connector
+# or an adapter board (see Waveshare docs).
+#
+# Force HDMI output even if no display is detected (uncomment if needed):
+#hdmi_force_hotplug=1
+#hdmi_force_hotplug:1=1
+
+# Force a specific HDMI mode (uncomment and adjust as needed):
+#hdmi_group=1
+#hdmi_mode=16          # 1080p 60Hz
+
+# -----------------------------------------------------------------------------
+# Audio
+# -----------------------------------------------------------------------------
+dtparam=audio=on
+
+# -----------------------------------------------------------------------------
+# PCIe / NVMe (M.2 M-Key Slot)
+# -----------------------------------------------------------------------------
+# The CM4-IO-BASE-A has an M.2 M-Key slot supporting PCIe devices
+# (NVMe SSDs, etc.). SATA drives are NOT supported.
+#
+# For Gen 3.0 speed on supported NVMe drives (use at your own risk):
+#dtparam=pciex1_gen=3
+
+# To boot from NVMe, update the EEPROM bootloader config:
+#   sudo rpi-eeprom-config --edit
+#   Set BOOT_ORDER=0xf416  (NVMe -> SD -> USB -> restart)
+
+# -----------------------------------------------------------------------------
+# Fan Control (GPIO18 PWM)
+# -----------------------------------------------------------------------------
+# The CM4-IO-BASE-A fan header PWM pin is connected to GPIO18.
+# WARNING: Fan header is 5V ONLY - do NOT connect a 12V fan.
+#
+# Thermal fan control overlay (adjust temps/speeds as desired):
+#dtoverlay=gpio-fan,gpiopin=18,temp=55000
+
+# -----------------------------------------------------------------------------
+# I2C / SPI
+# -----------------------------------------------------------------------------
+# Enable I2C bus 1 (default, exposed on 40-pin GPIO header)
+dtparam=i2c_arm=on
+
+# Enable SPI (uncomment if needed)
+#dtparam=spi=on
+
+# -----------------------------------------------------------------------------
+# UART / Serial Console
+# -----------------------------------------------------------------------------
+# Enable primary UART for serial console on GPIO header
+enable_uart=1
+
+# -----------------------------------------------------------------------------
+# CSI Camera / DSI Display (Disabled by default)
+# -----------------------------------------------------------------------------
+# CSI and DSI are disabled by default on the CM4-IO-BASE-A.
+# Enabling them will occupy I2C-10, I2C-11, and I2C-0.
+#
+# To use cameras/DSI, you must first compile the dt-blob.bin:
+#   wget https://files.waveshare.com/upload/7/75/CM4_dt_blob_Source.zip
+#   unzip -o CM4_dt_blob_Source.zip -d ./CM4_dt_blob_Source
+#   sudo chmod 777 -R CM4_dt_blob_Source
+#   cd CM4_dt_blob_Source/
+#
+#   For V1-V3 boards (DSI0):
+#     sudo dtc -I dts -O dtb -o /boot/dt-blob.bin dt-blob-disp0-double_cam.dts
+#
+#   For V4 boards (DSI1):
+#     sudo dtc -I dts -O dtb -o /boot/dt-blob.bin dt-blob-disp1-double_cam.dts
+#
+# Then change vc4-kms-v3d to vc4-fkms-v3d above, and enable:
+#dtparam=i2c_vc=on
+
+# DSI 7" display (uncomment the correct one for your board version):
+#dtoverlay=vc4-kms-dsi-7inch,dsi0    # V1-V3
+#dtoverlay=vc4-kms-dsi-7inch,dsi1    # V4
+
+# -----------------------------------------------------------------------------
+# CM4-Specific Overrides
+# -----------------------------------------------------------------------------
+[cm4]
+# Remove otg_mode to prevent "hub doesn't have any ports" errors
+# on newer Raspberry Pi OS images (post Oct 2021).
+# otg_mode=1   # DO NOT enable - breaks USB host mode
+
+[all]
+# Any additional settings below this line apply to all CM variants.
