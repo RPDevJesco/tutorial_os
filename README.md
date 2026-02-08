@@ -10,7 +10,7 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 | Raspberry Pi 4B / CM4 | BCM2711 | ✅ Complete |
 | Raspberry Pi 5 / CM5 | BCM2712 | ❌ InComplete |
 | Radxa Rock 2A | RK3528A | ❌ InComplete |
-| Libre Iota | ??? | ❌ InComplete |
+| LattePanda Iota | ??? | ❌ InComplete |
 | Orange Pi RV 2 | ??? | ❌ InComplete |
 | Libre Le Potato | AML-s905X-CC | ❌ InComplete |
 
