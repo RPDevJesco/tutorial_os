@@ -4,16 +4,17 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 
 ## Supported Platforms
 
-| Board | SoC | Status |
-|-------|-----|--------|
-| Raspberry Pi Zero 2W + GPi Case | BCM2710 | ✅ Complete |
-| Raspberry Pi 4B / CM4 | BCM2711 | ✅ Complete |
-| Raspberry Pi 5 / CM5 | BCM2712 | ❌ InComplete |
-| Radxa Rock 2A | RK3528A | ❌ InComplete |
-| LattePanda Iota | ??? | ❌ InComplete |
-| Orange Pi RV 2 | ??? | ❌ InComplete |
-| Libre Le Potato | AML-s905X-CC | ❌ InComplete |
+| Board | SoC | Architecture | Status |
+|-------|-----|--------------|--------|
+| Raspberry Pi Zero 2W + GPi Case | BCM2710      | ARM    | ✅ Complete |
+| Raspberry Pi 4B / CM4           | BCM2711      | ARM    | ✅ Complete |
+| Raspberry Pi 5 / CM5            | BCM2712      | ARM    | ❌ InComplete |
+| Radxa Rock 2A                   | RK3528A      | ARM    | ❌ InComplete |
+| LattePanda Iota                 | ???          | x86_64 | ❌ InComplete |
+| Orange Pi RV 2                  | KYX1         | RISC-V | ❌ InComplete |
+| Libre Le Potato                 | AML-s905X-CC | ARM    | ❌ InComplete |
 
+https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
 
 ## Directory Structure
 
@@ -294,9 +295,3 @@ int32_t temp = hal_platform_get_temp_celsius();
 ## License
 
 Educational use. See LICENSE file.
-
-
-
-
-https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
-
