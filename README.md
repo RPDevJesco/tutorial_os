@@ -294,3 +294,9 @@ int32_t temp = hal_platform_get_temp_celsius();
 ## License
 
 Educational use. See LICENSE file.
+
+
+
+
+https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
+
