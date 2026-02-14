@@ -22,6 +22,7 @@ ALL_BOARDS=(
     "rpi-cm5-io"
     "radxa-rock2a"
     "libre-la-potato"
+    "orangepi-rv2"
 )
 
 # Output directory (mounted from host)

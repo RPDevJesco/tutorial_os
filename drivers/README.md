@@ -127,3 +127,7 @@ while (!(mmio_read(STATUS) & READY_BIT)) {
 ## 📖 Further Reading
 
 Each driver directory has its own README with hardware-specific details.
+
+
+fatload mmc 0:5 0x20000000 tutorial-os-rv2.bin
+booti 0x20000000 - $fdtcontroladdr

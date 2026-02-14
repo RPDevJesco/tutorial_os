@@ -1,246 +1,221 @@
 /*
- * mmio.h - Memory-Mapped I/O and System Primitives
- * =================================================
+ * mmio.h — Memory-Mapped I/O and System Primitives (Multi-Architecture)
+ * ======================================================================
  *
  * This header provides low-level hardware access primitives used by all
- * drivers. It centralizes MMIO operations, memory barriers, timing functions,
- * and cache management.
+ * drivers across all architectures. It's the single file that makes
+ * "portable" drivers like framebuffer.c compile on both ARM64 and RISC-V.
  *
- * Previously these were scattered inline across drivers. Centralizing them:
- *   - Ensures consistent implementation
- *   - Makes it easier to port to different platforms
- *   - Provides a single place to add debugging/tracing
+ * HOW IT WORKS:
+ *   Every function detects the target architecture at compile time:
+ *     #ifdef __aarch64__  → ARM64 inline assembly (original code, unchanged)
+ *     #ifdef __riscv      → RISC-V inline assembly or extern calls
  *
- * MEMORY-MAPPED I/O:
- * ------------------
- * On ARM, hardware registers appear at specific memory addresses. Reading
- * and writing these addresses controls the hardware. We use 'volatile' to
- * prevent the compiler from optimizing away these accesses.
+ *   For ARM64, everything is exactly as it was — no behavior changes.
  *
- * MEMORY BARRIERS:
- * ----------------
- * ARM processors can reorder memory operations for performance. When talking
- * to hardware, we need barriers to ensure operations happen in order:
- *   - DMB (Data Memory Barrier): Ensures all memory accesses before complete
- *     before any after
- *   - DSB (Data Synchronization Barrier): Ensures all memory accesses complete
- *     before the next instruction executes
- *   - ISB (Instruction Synchronization Barrier): Flushes the pipeline
+ *   For RISC-V:
+ *     - Barriers:   fence instructions (inline)
+ *     - CPU hints:  wfi (inline), compiler barriers where no equivalent exists
+ *     - Timing:     extern to soc/kyx1/timer.c (uses rdtime @ 24 MHz)
+ *     - Cache ops:  extern to boot/riscv64/cache.S (uses Zicbom instructions)
+ *                   Cache ops are extern because Zicbom needs a special -march
+ *                   flag that only cache.S is compiled with.
+ *     - BCM addrs:  only defined on ARM64 (RISC-V has kyx1_regs.h instead)
  *
- * TIMING:
- * -------
- * We use the BCM283x system timer (1MHz) for accurate microsecond timing.
- * This is much more accurate than spin loops.
- *
- * CACHE MANAGEMENT:
- * -----------------
- * When sharing memory with the GPU or DMA, we need to manage caches:
- *   - Clean: Write dirty cache lines to RAM (CPU wrote, GPU needs to see)
- *   - Invalidate: Discard cache contents (GPU wrote, CPU needs to see fresh)
- *   - Flush: Clean then invalidate
+ * WHAT'S IN THIS FILE:
+ *   - Portable MMIO read/write (shared across all platforms via hal_cpu.h)
+ *   - Memory barriers (dmb, dsb, isb)
+ *   - CPU power hints (wfe, wfi, sev, yield/cpu_relax)
+ *   - Timing (micros, delay_us, delay_ms)
+ *   - Cache management (clean, invalidate, flush)
+ *   - Platform-specific hardware base addresses
  */
 
 #ifndef MMIO_H
 #define MMIO_H
 
-#include "types.h"
+/*
+ * Include the HAL CPU contract.
+ * This gives us the portable mmio_read() and mmio_write() functions
+ * that work on every architecture. We don't redefine them here.
+ */
+#include "hal_cpu.h"
+
 
 /* =============================================================================
  * HARDWARE BASE ADDRESSES
  * =============================================================================
+ *
+ * BCM addresses are only relevant on ARM64 Pi platforms.
+ * RISC-V platforms define their addresses in soc/kyx1/kyx1_regs.h.
  */
 
-/*
- * BCM2837 peripheral base address (Pi Zero 2W / Pi 3)
- *
- * All peripherals are memory-mapped starting at this address.
- * Add the peripheral's offset to get its register addresses.
- */
+#ifdef __aarch64__
+
 #define PERIPHERAL_BASE     0x3F000000
-
-/*
- * ARM Local peripherals base
- *
- * Used for multicore control, local timers, and mailboxes between cores.
- */
 #define ARM_LOCAL_BASE      0x40000000
-
-/*
- * System Timer base address
- *
- * The system timer runs at 1MHz and is used for accurate timing.
- */
 #define SYSTIMER_BASE       (PERIPHERAL_BASE + 0x00003000)
-
-/*
- * System Timer Counter Low register
- *
- * 32-bit counter incrementing at 1MHz. Wraps every ~71 minutes.
- */
 #define SYSTIMER_CLO        (SYSTIMER_BASE + 0x04)
-
-/*
- * System Timer Counter High register
- *
- * Upper 32 bits of the 64-bit counter.
- */
 #define SYSTIMER_CHI        (SYSTIMER_BASE + 0x08)
 
+#endif /* __aarch64__ */
+
 /*
- * ARM Cortex-A53 cache line size
- *
- * Used for cache maintenance operations.
+ * Cache line size — same on Cortex-A53 and X60 cores (64 bytes)
  */
 #define CACHE_LINE_SIZE     64
-
-
-/* =============================================================================
- * MMIO ACCESS FUNCTIONS
- * =============================================================================
- *
- * These functions read/write hardware registers with proper volatile semantics.
- */
-
-/*
- * mmio_write() - Write a 32-bit value to a hardware register
- *
- * @param addr   Register address
- * @param value  Value to write
- */
-static inline void mmio_write(uintptr_t addr, uint32_t value)
-{
-    *(volatile uint32_t *)addr = value;
-}
-
-/*
- * mmio_read() - Read a 32-bit value from a hardware register
- *
- * @param addr  Register address
- *
- * Returns: The register value
- */
-static inline uint32_t mmio_read(uintptr_t addr)
-{
-    return *(volatile uint32_t *)addr;
-}
 
 
 /* =============================================================================
  * MEMORY BARRIERS
  * =============================================================================
  *
- * ARM processors can reorder memory operations. Barriers ensure ordering.
+ * ARM64: dmb sy, dsb sy, isb
+ * RISC-V: fence (covers both dmb and dsb semantics), fence.i
+ *
+ * RISC-V's fence instruction is a combined ordering + completion barrier.
+ * There's no separate "ordering only" vs "completion" distinction like
+ * ARM64's dmb vs dsb. We use the same fence for both, which is correct
+ * (slightly conservative for dmb, but safe and simple).
  */
 
-/*
- * dmb() - Data Memory Barrier
- *
- * Ensures all explicit memory accesses before this instruction complete
- * before any explicit memory accesses after it.
- *
- * Use when: You need memory operations to be visible in order, but don't
- * need to wait for completion before continuing.
- */
+#if defined(__aarch64__)
+
 static inline void dmb(void)
 {
     __asm__ volatile("dmb sy" ::: "memory");
 }
 
-/*
- * dsb() - Data Synchronization Barrier
- *
- * Ensures all explicit memory accesses complete before the next instruction.
- * Stronger than DMB - actually waits for completion.
- *
- * Use when: You need to ensure writes are visible before continuing,
- * e.g., before enabling something that depends on the write.
- */
 static inline void dsb(void)
 {
     __asm__ volatile("dsb sy" ::: "memory");
 }
 
-/*
- * isb() - Instruction Synchronization Barrier
- *
- * Flushes the pipeline and ensures all previous instructions complete
- * before fetching new instructions.
- *
- * Use when: After modifying system registers or memory that affects
- * instruction execution (e.g., enabling MMU, modifying page tables).
- */
 static inline void isb(void)
 {
     __asm__ volatile("isb" ::: "memory");
 }
 
-/*
- * sev() - Send Event
+#elif defined(__riscv)
+
+static inline void dmb(void)
+{
+    /*
+     * fence iorw, iorw — orders all memory operations.
+     * Closest equivalent to ARM64's dmb sy.
+     *
+     * 'i' = device input, 'o' = device output,
+     * 'r' = memory reads, 'w' = memory writes
+     */
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
+
+static inline void dsb(void)
+{
+    /*
+     * RISC-V fence is a completion barrier (like dsb, not just ordering).
+     * Same instruction as dmb — RISC-V doesn't distinguish the two.
+     */
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
+
+static inline void isb(void)
+{
+    /*
+     * fence.i — instruction fetch barrier.
+     * Ensures that stores to instruction memory are visible to
+     * subsequent instruction fetches. Used after modifying code
+     * or trap vectors.
+     */
+    __asm__ volatile("fence.i" ::: "memory");
+}
+
+#else
+#error "Unsupported architecture — need barrier implementations"
+#endif
+
+
+/* =============================================================================
+ * CPU POWER HINTS
+ * =============================================================================
  *
- * Sends an event to all cores, waking any that are in WFE sleep.
+ * ARM64: sev, wfe, wfi, yield
+ * RISC-V: wfi only — no wfe/sev/yield equivalents
  *
- * Use when: Signaling other cores that work is available.
+ * For functions without a RISC-V equivalent, we use a compiler memory
+ * barrier to prevent the optimizer from removing spin loops.
  */
+
+#if defined(__aarch64__)
+
 static inline void sev(void)
 {
     __asm__ volatile("sev" ::: "memory");
 }
 
-/*
- * wfe() - Wait For Event
- *
- * Puts the core into low-power sleep until an event occurs.
- * Events include: SEV from another core, interrupts, etc.
- *
- * Use when: Waiting for something with low power consumption.
- */
 static inline void wfe(void)
 {
     __asm__ volatile("wfe" ::: "memory");
 }
 
-/*
- * wfi() - Wait For Interrupt
- *
- * Puts the core into low-power sleep until an interrupt occurs.
- *
- * Use when: Idle loop waiting for interrupts.
- */
 static inline void wfi(void)
 {
     __asm__ volatile("wfi" ::: "memory");
 }
 
+static inline void cpu_relax(void)
+{
+    __asm__ volatile("yield" ::: "memory");
+}
+
+#elif defined(__riscv)
+
+static inline void sev(void)
+{
+    /* No RISC-V equivalent — multi-core wakeup uses IPIs instead */
+    __asm__ volatile("" ::: "memory");
+}
+
+static inline void wfe(void)
+{
+    /* RISC-V has no wfe — use wfi as the closest equivalent.
+     * Both put the core to sleep until an interrupt/event. */
+    __asm__ volatile("wfi" ::: "memory");
+}
+
+static inline void wfi(void)
+{
+    __asm__ volatile("wfi" ::: "memory");
+}
+
+static inline void cpu_relax(void)
+{
+    /* No yield instruction on RISC-V — compiler barrier prevents
+     * the optimizer from removing spin loops. */
+    __asm__ volatile("" ::: "memory");
+}
+
+#endif
+
 
 /* =============================================================================
- * TIMING FUNCTIONS
+ * TIMING
  * =============================================================================
  *
- * Accurate timing using the BCM283x system timer (1MHz).
+ * ARM64/BCM: Uses BCM283x system timer @ 1 MHz (inline, register reads)
+ * RISC-V:    Uses rdtime CSR @ 24 MHz, provided by soc/kyx1/timer.c (extern)
+ *
+ * Both provide the same API: micros(), micros64(), delay_us(), delay_ms()
+ * with microsecond-resolution timing.
  */
 
-/*
- * micros() - Get current time in microseconds
- *
- * Returns the low 32 bits of the system timer counter.
- * Wraps every ~71 minutes (2^32 microseconds).
- *
- * Returns: Current time in microseconds
- */
+#if defined(__aarch64__)
+
 static inline uint32_t micros(void)
 {
     return mmio_read(SYSTIMER_CLO);
 }
 
-/*
- * micros64() - Get current time in microseconds (64-bit)
- *
- * Returns the full 64-bit system timer counter.
- * Note: Reading the two halves is not atomic, so there's a small
- * chance of error at the 32-bit boundary. For most uses, micros() is fine.
- *
- * Returns: Current time in microseconds (64-bit)
- */
 static inline uint64_t micros64(void)
 {
     uint32_t hi = mmio_read(SYSTIMER_CHI);
@@ -253,102 +228,102 @@ static inline uint64_t micros64(void)
     return ((uint64_t)hi << 32) | lo;
 }
 
-/*
- * delay_us() - Delay for a number of microseconds
- *
- * Uses the system timer for accurate delays. Handles wrap-around correctly.
- *
- * @param us  Number of microseconds to delay
- */
 static inline void delay_us(uint32_t us)
 {
     uint32_t start = micros();
     while ((micros() - start) < us) {
-        /* Hint to CPU that we're spinning */
         __asm__ volatile("yield");
     }
 }
 
-/*
- * delay_ms() - Delay for a number of milliseconds
- *
- * @param ms  Number of milliseconds to delay
- */
 static inline void delay_ms(uint32_t ms)
 {
     delay_us(ms * 1000);
 }
+
+#elif defined(__riscv)
+
+/*
+ * On RISC-V, timing is provided by soc/kyx1/timer.c which reads
+ * the rdtime CSR at 24 MHz and converts to microseconds.
+ * These are declared extern here so portable drivers can call them.
+ */
+extern uint32_t micros(void);
+extern uint64_t micros64(void);
+extern void     delay_us(uint32_t us);
+extern void     delay_ms(uint32_t ms);
+
+#endif
 
 
 /* =============================================================================
  * CACHE MANAGEMENT
  * =============================================================================
  *
- * ARM caches can hold stale data when sharing memory with GPU/DMA.
- * These functions ensure coherency.
+ * ARM64: dc cvac/ivac/civac instructions (inline)
+ * RISC-V: Zicbom cbo.clean/inval/flush instructions (extern from cache.S)
+ *
+ * WHY RISC-V CACHE OPS ARE EXTERN:
+ *   The cbo.* instructions require -march=rv64gc_zicbom which is only
+ *   enabled for cache.S (via CACHE_ASFLAGS in board.mk). If we put
+ *   them inline here, every .c file would need that flag, which would
+ *   fail on toolchains that don't support it or pollute the flag space.
+ *   Calling out to cache.S keeps the special flag isolated.
+ *
+ * Same API, same semantics:
+ *   clean_dcache_range()       — write dirty lines to RAM
+ *   invalidate_dcache_range()  — discard cached data
+ *   flush_dcache_range()       — clean + invalidate
  */
 
-/*
- * clean_dcache_range() - Clean data cache for a memory range
- *
- * Writes any dirty cache lines back to RAM. Use when the CPU has written
- * data that the GPU or DMA needs to see.
- *
- * @param start  Start address (will be aligned down to cache line)
- * @param size   Number of bytes
- */
+#if defined(__aarch64__)
+
 static inline void clean_dcache_range(uintptr_t start, size_t size)
 {
-    uintptr_t addr = start & ~63;  /* Align to cache line (64 bytes) */
+    uintptr_t addr = start & ~(CACHE_LINE_SIZE - 1);
     uintptr_t end = start + size;
     while (addr < end) {
         __asm__ volatile("dc cvac, %0" : : "r"(addr) : "memory");
-        addr += 64;
+        addr += CACHE_LINE_SIZE;
     }
+    dsb();
 }
 
-/*
- * invalidate_dcache_range() - Invalidate data cache for a memory range
- *
- * Discards cached data, forcing next read to come from RAM.
- * Use when the GPU or DMA has written data that the CPU needs to see.
- *
- * WARNING: Any dirty data in the cache will be lost!
- *
- * @param start  Start address (will be aligned down to cache line)
- * @param size   Number of bytes
- */
 static inline void invalidate_dcache_range(uintptr_t start, size_t size)
 {
-    uintptr_t addr = start & ~63;
+    uintptr_t addr = start & ~(CACHE_LINE_SIZE - 1);
     uintptr_t end = start + size;
     while (addr < end) {
         __asm__ volatile("dc ivac, %0" : : "r"(addr) : "memory");
-        addr += 64;
+        addr += CACHE_LINE_SIZE;
     }
+    dsb();
 }
 
-/*
- * flush_dcache_range() - Clean and invalidate data cache for a memory range
- *
- * Writes dirty data back to RAM, then invalidates. Use for bidirectional
- * shared memory where both CPU and GPU/DMA read and write.
- *
- * @param start  Start address (will be aligned down to cache line)
- * @param size   Number of bytes
- */
 static inline void flush_dcache_range(uintptr_t start, size_t size)
 {
     uintptr_t addr = start & ~(CACHE_LINE_SIZE - 1);
     uintptr_t end = start + size;
-
     while (addr < end) {
-        /* DC CIVAC - Clean and Invalidate by VA to Point of Coherency */
-        __asm__ volatile("dc civac, %0" :: "r"(addr));
+        __asm__ volatile("dc civac, %0" : : "r"(addr) : "memory");
         addr += CACHE_LINE_SIZE;
     }
-
     dsb();
 }
+
+#elif defined(__riscv)
+
+/*
+ * On RISC-V, cache management is provided by boot/riscv64/cache.S
+ * which is compiled with -march=rv64gc_zicbom_zicboz.
+ *
+ * Same function names, same signatures, same semantics as ARM64.
+ */
+extern void clean_dcache_range(uintptr_t start, size_t size);
+extern void invalidate_dcache_range(uintptr_t start, size_t size);
+extern void flush_dcache_range(uintptr_t start, size_t size);
+
+#endif
+
 
 #endif /* MMIO_H */

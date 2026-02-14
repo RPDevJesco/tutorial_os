@@ -1,0 +1,13 @@
+{
+  "platform": "orangepi-riscv",
+  "soc": "ky-x1",
+  "board": "orangepi-rv2-kyx1",
+  "defconfig": "x1_defconfig",
+  "uboot_source": "vendor-fork",
+  "uboot_branch": "v2022.10-ky",
+  "artifacts_count": 14,
+  "build_time_seconds": 10,
+  "built_at": "2026-02-09T22:49:20Z",
+  "u_boot_version": "89bff4a7",
+  "_warning": "Vendor fork — no mainline support. May require orangepi-build tooling."
+}

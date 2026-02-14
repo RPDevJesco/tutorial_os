@@ -4,16 +4,17 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 
 ## Supported Platforms
 
-| Board | SoC | Status |
-|-------|-----|--------|
-| Raspberry Pi Zero 2W + GPi Case | BCM2710 | ✅ Complete |
-| Raspberry Pi 4B / CM4 | BCM2711 | ✅ Complete |
-| Raspberry Pi 5 / CM5 | BCM2712 | ❌ InComplete |
-| Radxa Rock 2A | RK3528A | ❌ InComplete |
-| LattePanda Iota | ??? | ❌ InComplete |
-| Orange Pi RV 2 | ??? | ❌ InComplete |
-| Libre Le Potato | AML-s905X-CC | ❌ InComplete |
+| Board | SoC | Architecture | Status |
+|-------|-----|--------------|--------|
+| Raspberry Pi Zero 2W + GPi Case | BCM2710      | ARM    | ✅ Complete |
+| Raspberry Pi 4B / CM4           | BCM2711      | ARM    | ✅ Complete |
+| Raspberry Pi 5 / CM5            | BCM2712      | ARM    | ❌ InComplete |
+| Radxa Rock 2A                   | RK3528A      | ARM    | ❌ InComplete |
+| LattePanda Iota                 | ???          | x86_64 | ❌ InComplete |
+| Orange Pi RV 2                  | KYX1         | RISC-V | ❌ InComplete |
+| Libre Le Potato                 | AML-s905X-CC | ARM    | ❌ InComplete |
 
+https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
 
 ## Directory Structure
 
@@ -29,7 +30,7 @@ tutorial-os/
 │
 ├── soc/                        # SoC-specific implementations
 │   ├── bcm2710/                # Pi Zero 2W, Pi 3
-│   ├── bcm2711/                # Pi 4, CM4
+│   ├── kyx1/                   # Orange Pi RV 2
 │   └── rk3528a/                # Radxa Rock 2A
 │
 ├── board/                      # Board-specific configurations
@@ -45,12 +46,15 @@ tutorial-os/
 │   │       ├── config.txt
 │   │       └── BOOT_FILES.md
 │   │
-│   └── radxa-rock2a/
+│   └── orangepi-rv2/
 │       ├── board.mk
 │       └── boot/
 │           ├── extlinux/
 │           │   └── extlinux.conf   # U-Boot config
-│           └── BOOT_FILES.md
+│           ├── board.mk
+│           ├── boot.cmd
+│           ├── DEPLOY.md
+│           └── mkimage.sh # creates the img with uboot configuration
 │
 ├── boot/                       # Core assembly entry points
 ├── common/                     # Shared (less than) minimal libc and mmio
@@ -59,6 +63,10 @@ tutorial-os/
 ├── memory/                     # Memory management
 ├── ui/                         # UI widgets
 │
+├── build.sh                    # Build on Linux / MacOS
+├── build.bat                   # Build on Windows
+├── docker-build.sh             # Build system
+├── Dockerfile                  # Build system
 ├── Makefile                    # Build system
 └── README.md                   # This file
 ```

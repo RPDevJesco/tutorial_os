@@ -29,34 +29,11 @@
 /* =============================================================================
  * CACHE AND MEMORY BARRIER OPERATIONS
  * =============================================================================
- * These are needed for all platforms to ensure framebuffer data is visible
- * to the display hardware.
+ * Provided by mmio.h which detects the target architecture at compile time:
+ *   ARM64:   inline dsb/dmb/dc instructions
+ *   RISC-V:  fence (inline) + extern cache ops from cache.S (Zicbom)
  */
-
-/* Data synchronization barrier */
-static inline void dsb(void) {
-    __asm__ volatile("dsb sy" ::: "memory");
-}
-
-/* Data memory barrier */
-static inline void dmb(void) {
-    __asm__ volatile("dmb sy" ::: "memory");
-}
-
-/*
- * Clean data cache for a memory range
- * Writes dirty cache lines back to RAM for DMA/GPU to see
- */
-static inline void clean_dcache_range(uintptr_t start, size_t size)
-{
-    const size_t cache_line = 64;  /* ARM64 cache line size */
-    uintptr_t addr = start & ~(cache_line - 1);  /* Align down */
-    uintptr_t end = start + size;
-    while (addr < end) {
-        __asm__ volatile("dc cvac, %0" : : "r"(addr) : "memory");
-        addr += cache_line;
-    }
-}
+#include "mmio.h"
 
 /* =============================================================================
  * VOLATILE ACCESS MACROS

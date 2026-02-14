@@ -109,29 +109,4 @@
 #define HAL_BOARD       "unknown"
 #endif
 
-/* =============================================================================
- * PHASE 1 STATUS
- * =============================================================================
- *
- * This is Phase 1 of the HAL implementation. The headers define the
- * interfaces but implementations are not yet complete for all platforms.
- *
- * Phase 1 Complete:
- *   [x] hal_types.h      - Types and utilities
- *   [x] hal_platform.h   - Platform info interface
- *   [x] hal_timer.h      - Timer/delay interface
- *   [x] hal_gpio.h       - GPIO interface
- *   [x] hal_display.h    - Display interface
- *
- * Phase 2 (Implementation):
- *   [ ] soc/bcm2710/     - Pi Zero 2W implementation
- *   [ ] soc/bcm2711/     - Pi 4/CM4 implementation
- *   [ ] soc/bcm2712/     - Pi 5/CM5 implementation
- *   [ ] soc/rk3528a/     - Rock 2A implementation
- *   [ ] soc/s905x/       - Le Potato implementation
- *   [ ] soc/h618/        - KICKPI K2B implementation
- *   [ ] soc/k1/          - Orange Pi RV2 implementation
- *
- */
-
 #endif /* HAL_H */

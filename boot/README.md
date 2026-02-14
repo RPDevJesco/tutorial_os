@@ -41,7 +41,7 @@ Key responsibilities:
 - Clear BSS (zero-initialized data)
 - Jump to C code
 
-### memory_layout.ld - Memory Map
+### linker.ld - Memory Map
 A "linker script" that tells the linker where to put things:
 - Where does code go? (0x80000)
 - Where do global variables go?
@@ -95,8 +95,8 @@ aarch64-none-elf-as boot.S -o boot.o
 # Compile kernel
 aarch64-none-elf-gcc -c ../kernel/main.c -o main.o
 
-# Link with memory_layout.ld
-aarch64-none-elf-ld -T memory_layout.ld boot.o main.o -o kernel.elf
+# Link with linker.ld
+aarch64-none-elf-ld -T linker.ld boot.o main.o -o kernel.elf
 
 # Extract raw binary
 aarch64-none-elf-objcopy -O binary kernel.elf kernel8.img
@@ -105,5 +105,5 @@ aarch64-none-elf-objcopy -O binary kernel.elf kernel8.img
 ## 📖 Further Reading
 
 - `boot.S` - Heavily commented, read line by line
-- `memory_layout.ld` - Explains each section
+- `linker.ld` - Explains each section
 - ARM Architecture Reference Manual (ARMv8-A)

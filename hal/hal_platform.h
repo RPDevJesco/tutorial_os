@@ -41,9 +41,11 @@ typedef struct {
 typedef struct {
     uintptr_t arm_base;                 /* ARM accessible RAM base */
     size_t arm_size;                    /* ARM accessible RAM size */
+	uintptr_t peripheral_base;          /* Peripheral register base */
+	/* Optional GPU/coprocessor memory — zero if not applicable */
     uintptr_t gpu_base;                 /* GPU memory base (if applicable) */
     size_t gpu_size;                    /* GPU memory size */
-    uintptr_t peripheral_base;          /* Peripheral register base */
+
 } hal_memory_info_t;
 
 /*

@@ -24,12 +24,12 @@ typedef signed short        int16_t;
 typedef unsigned short      uint16_t;
 typedef signed int          int32_t;
 typedef unsigned int        uint32_t;
-typedef signed long long    int64_t;
-typedef unsigned long long  uint64_t;
+typedef __INT64_TYPE__      int64_t;
+typedef __UINT64_TYPE__     uint64_t;
 
-typedef unsigned long       uintptr_t;
-typedef signed long         intptr_t;
-typedef unsigned long       size_t;
+typedef __UINTPTR_TYPE__    uintptr_t;
+typedef __INTPTR_TYPE__     intptr_t;
+typedef __SIZE_TYPE__       size_t;
 
 /* Boolean - matches types.h */
 typedef _Bool bool;

@@ -8,6 +8,7 @@
 #
 #   # Build specific board only:
 #   docker run --rm -v $(pwd)/output:/output tutorial-os-builder rpi-zero2w-gpi
+#   docker run --rm -v $(pwd)/output:/output tutorial-os-builder orangepi-rv2
 #
 #   # Interactive shell:
 #   docker run --rm -it -v $(pwd)/output:/output tutorial-os-builder bash
@@ -15,7 +16,7 @@
 FROM ubuntu:24.04
 
 LABEL maintainer="Tutorial-OS"
-LABEL description="ARM64 bare-metal cross-compilation environment"
+LABEL description="ARM64 + RISC-V bare-metal cross-compilation environment"
 
 # Avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -24,6 +25,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install build dependencies
 # =============================================================================
 
+# ──── CHANGED: Added gcc-riscv64-linux-gnu for Orange Pi RV2 ────
 RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
@@ -34,6 +36,7 @@ RUN apt-get update && apt-get install -y \
     mtools \
     u-boot-tools \
     dosfstools \
+    gcc-riscv64-linux-gnu \
     && rm -rf /var/lib/apt/lists/*
 
 # =============================================================================
@@ -52,6 +55,10 @@ RUN wget -q ${ARM_TOOLCHAIN_URL} -O /tmp/arm-toolchain.tar.xz \
 
 # Add toolchain to PATH
 ENV PATH="/opt/arm-gnu-toolchain/bin:${PATH}"
+
+# ──── CHANGED: Verify both toolchains are available ────
+RUN aarch64-none-elf-gcc --version | head -1 \
+    && riscv64-linux-gnu-gcc --version | head -1
 
 # =============================================================================
 # Set up build environment
