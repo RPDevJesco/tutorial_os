@@ -125,12 +125,6 @@ tutorial-os/
 │   ├── framebuffer/            # UI Theme System
 │   │   ├── framebuffer.c       # 32-bit ARGB8888 Framebuffer Driver
 │   │   └── framebuffer.h       # Framebuffer definitions
-│   ├── gpio/                   # GPIO Configuration (ARM)
-│   │   ├── gpio.h              # GPIO Configuration for Raspberry Pi Zero 2W
-│   │   └── gpio.c              # GPIO Configuration Implementations
-│   ├── mailbox/                # Core Mailbox driver
-│   │   ├── mailbox.h           # VideoCore Mailbox Interface
-│   │   └── mailbox.c           # VideoCore Mailbox Implementation
 │   ├── sdcard/                 # SD Card Driver
 │   │   ├── sdhost.h            # SD Card Driver via SDHOST Controller
 │   │   └── sdhost.c            # SD Card Driver Implementation
