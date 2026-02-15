@@ -120,10 +120,10 @@ tutorial-os/
 │
 ├── drivers/                    # Portable drivers
 │   ├── audio/                  # Core Audio System Drivers
-│   │   ├── audio.h             # PWM Audio Driver Implementation
+│   │   ├── audio.c             # PWM Audio Driver Implementation
 │   │   └── audio.h             # PWM Audio Driver Definitions
 │   ├── framebuffer/            # UI Theme System
-│   │   ├── framebuffer.h       # 32-bit ARGB8888 Framebuffer Driver
+│   │   ├── framebuffer.c       # 32-bit ARGB8888 Framebuffer Driver
 │   │   └── framebuffer.h       # Framebuffer definitions
 │   ├── gpio/                   # GPIO Configuration (ARM)
 │   │   ├── gpio.h              # GPIO Configuration for Raspberry Pi Zero 2W
