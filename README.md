@@ -11,7 +11,7 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 | Raspberry Pi 5 / CM5            | BCM2712      | ARM    | ❌ InComplete |
 | Radxa Rock 2A                   | RK3528A      | ARM    | ❌ InComplete |
 | LattePanda Iota                 | ???          | x86_64 | ❌ InComplete |
-| Orange Pi RV 2                  | KYX1         | RISC-V | ❌ InComplete |
+| Orange Pi RV 2                  | KYX1         | RISC-V | ✅ Complete |
 | Libre Le Potato                 | AML-s905X-CC | ARM    | ❌ InComplete |
 
 https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
