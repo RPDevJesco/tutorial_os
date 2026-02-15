@@ -49,7 +49,7 @@ tutorial-os/
 │   │   ├── gpio.c              # GPIO Implementation
 │   │   ├── linker.ld           # Linker Script
 │   │   ├── mailbox.c           # Mailbox Implementation
-│   │   ├── soc.mk              # BCM2710 Configuration
+│   │   ├── soc.mk              # BCM2711 Configuration
 │   │   ├── soc_init.c          # Platform Initialization
 │   │   └── timer.c             # Timer Implementation
 │   ├── bcm2712/                # Raspberry Pi 5, CM5
@@ -60,7 +60,7 @@ tutorial-os/
 │   │   ├── gpio.c              # GPIO Implementation
 │   │   ├── linker.ld           # Linker Script
 │   │   ├── mailbox.c           # Mailbox Implementation
-│   │   ├── soc.mk              # BCM2710 Configuration
+│   │   ├── soc.mk              # BCM2712 Configuration
 │   │   ├── soc_init.c          # Platform Initialization
 │   │   └── timer.c             # Timer Implementation
 │   ├── kyx1/                   # Orange Pi RV 2
