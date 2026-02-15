@@ -47,14 +47,11 @@ tutorial-os/
 │   │       └── BOOT_FILES.md
 │   │
 │   └── orangepi-rv2/
+│       ├── env_k1-x.txt
 │       ├── board.mk
-│       └── boot/
-│           ├── extlinux/
-│           │   └── extlinux.conf   # U-Boot config
-│           ├── board.mk
-│           ├── boot.cmd
-│           ├── DEPLOY.md
-│           └── mkimage.sh # creates the img with uboot configuration
+│       ├── boot.cmd
+│       ├── DEPLOY.md
+│       └── mkimage.sh # creates the img with uboot configuration
 │
 ├── boot/                       # Core assembly entry points
 ├── common/                     # Shared (less than) minimal libc and mmio
