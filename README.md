@@ -28,10 +28,52 @@ tutorial-os/
 │   ├── hal_gpio.h              # GPIO control
 │   └── hal_display.h           # Display initialization
 │
+│   # Each soc attempts to follow the same pattern for files
 ├── soc/                        # SoC-specific implementations
-│   ├── bcm2710/                # Pi Zero 2W, Pi 3
+│   ├── bcm2710/                # Raspberry Pi 3B, 3B+, 3A+, Zero 2 W, and CM3 devices
+│   │   ├── bcm2710_mailbox.h   # Mailbox Interface
+│   │   ├── bcm2710_regs.h      # Register Definitions
+│   │   ├── boot_soc.S          # SoC-Specific Boot Code
+│   │   ├── display_dpi.c       # Display Implementation (DPI/HDMI)
+│   │   ├── gpio.c              # GPIO Implementation
+│   │   ├── linker.ld           # Linker Script
+│   │   ├── mailbox.c           # Mailbox Implementation
+│   │   ├── soc.mk              # BCM2710 Configuration
+│   │   ├── soc_init.c          # Platform Initialization
+│   │   └── timer.c             # Timer Implementation
+│   ├── bcm2711/                # Raspberry Pi 4, CM4, Pi 400
+│   │   ├── bcm2711_mailbox.h   # Mailbox Interface
+│   │   ├── bcm2711_regs.h      # Register Definitions
+│   │   ├── boot_soc.S          # SoC-Specific Boot Code
+│   │   ├── display_dpi.c       # Display Implementation (DPI/HDMI)
+│   │   ├── gpio.c              # GPIO Implementation
+│   │   ├── linker.ld           # Linker Script
+│   │   ├── mailbox.c           # Mailbox Implementation
+│   │   ├── soc.mk              # BCM2710 Configuration
+│   │   ├── soc_init.c          # Platform Initialization
+│   │   └── timer.c             # Timer Implementation
+│   ├── bcm2712/                # Raspberry Pi 5, CM5
+│   │   ├── bcm2712_mailbox.h   # Mailbox Interface
+│   │   ├── bcm2712_regs.h      # Register Definitions
+│   │   ├── boot_soc.S          # SoC-Specific Boot Code
+│   │   ├── display_dpi.c       # Display Implementation (DPI/HDMI)
+│   │   ├── gpio.c              # GPIO Implementation
+│   │   ├── linker.ld           # Linker Script
+│   │   ├── mailbox.c           # Mailbox Implementation
+│   │   ├── soc.mk              # BCM2710 Configuration
+│   │   ├── soc_init.c          # Platform Initialization
+│   │   └── timer.c             # Timer Implementation
 │   ├── kyx1/                   # Orange Pi RV 2
-│   └── rk3528a/                # Radxa Rock 2A
+│   │   ├── display_simplefb.c  # Display Driver
+│   │   ├── gpio.c              # GPIO Implementation
+│   │   ├── hal_platform_kyx1.c # RISC-V equivalent of what soc/bcm2710/soc_init.c does for the Pi
+│   │   ├── kyx1_cpu.h          # CPU Operations
+│   │   ├── kyx1_regs.h         # Register Definitions
+│   │   ├── linker.ld           # Linker Script
+│   │   ├── soc.mk              # KYX1 Configuration
+│   │   ├── soc_init.c          # Platform Initialization
+│   │   ├── timer.c             # Timer Implementation
+│   └   └── uart.c              # UART Driver
 │
 ├── board/                      # Board-specific configurations
 │   ├── rpi-zero2w-gpi/
@@ -51,14 +93,67 @@ tutorial-os/
 │       ├── board.mk
 │       ├── boot.cmd
 │       ├── DEPLOY.md
-│       └── mkimage.sh # creates the img with uboot configuration
+│       └── mkimage.sh          # creates the img with uboot configuration
 │
 ├── boot/                       # Core assembly entry points
+│   ├── arm64/
+│   │   ├── cache.S             # Cache Maintenance Functions
+│   │   ├── common_init.S       # Common Post-SoC Initialization
+│   │   ├── entry.S             # Entry Point
+│   │   └── vectors.S           # Exception Vector Table
+│   ├── riscv64/
+│   │   ├── cache.S             # Cache Maintenance Functions
+│   │   ├── common_init.S       # Common Post-SoC Initialization
+│   │   ├── entry.S             # Entry Point
+│   │   └── vectors.S           # Exception Vector Table
+│   ├── x86_64/
+│   │   ├── cache.S             # Cache Maintenance Functions
+│   │   ├── common_init.S       # Common Post-SoC Initialization
+│   │   ├── entry.S             # Entry Point
+│   └   └── vectors.S           # Exception Vector Table
+│
 ├── common/                     # Shared (less than) minimal libc and mmio
+│   ├── mmio.h                  # Memory-Mapped I/O and System Primitives
+│   ├── string.c                # Memory and String Functions
+│   ├── string.h                # String and Memory Function Declarations
+│   └── types.h                 # Type Definitions
+│
 ├── drivers/                    # Portable drivers
+│   ├── audio/                  # Core Audio System Drivers
+│   │   ├── audio.h             # PWM Audio Driver Implementation
+│   │   └── audio.h             # PWM Audio Driver Definitions
+│   ├── framebuffer/            # UI Theme System
+│   │   ├── framebuffer.h       # 32-bit ARGB8888 Framebuffer Driver
+│   │   └── framebuffer.h       # Framebuffer definitions
+│   ├── gpio/                   # GPIO Configuration (ARM)
+│   │   ├── gpio.h              # GPIO Configuration for Raspberry Pi Zero 2W
+│   │   └── gpio.c              # GPIO Configuration Implementations
+│   ├── mailbox/                # Core Mailbox driver
+│   │   ├── mailbox.h           # VideoCore Mailbox Interface
+│   │   └── mailbox.c           # VideoCore Mailbox Implementation
+│   ├── sdcard/                 # SD Card Driver
+│   │   ├── sdhost.h            # SD Card Driver via SDHOST Controller
+│   │   └── sdhost.c            # SD Card Driver Implementation
+│   ├── usb/                    # USB Host Driver
+│   │   ├── usb_host.h          # DWC2 USB Host Controller Driver Definition
+│   └   └── usb_host.c          # DWC2 USB Host Controller Implementations
+│
 ├── kernel/                     # Kernel code
+│   └── main.c                  # Main application entry point
+│
 ├── memory/                     # Memory management
-├── ui/                         # UI widgets
+│   ├── allocator.h             # TLSF-Inspired Memory Allocator Declaration
+│   └── allocator.c             # TLSF-Inspired Memory Allocator
+│
+├── ui/                         # UI System
+│   ├── core/                   # Core UI Canvas and Type definitions
+│   │   ├── ui_canvas.h         # Canvas and Text Renderer Interfaces
+│   │   └── ui_types.h          # Core UI Type Definitions
+│   ├── themes/                 # UI Theme System
+│   │   └── ui_theme.h          # UI Theme System definitions
+│   ├── widgets/                # Reusable UI Widget Functions
+│   │   ├── ui_widgets.h        # UI Widget definitions
+│   └   └── ui_widgets.c        # UI Widget Implementations
 │
 ├── build.sh                    # Build on Linux / MacOS
 ├── build.bat                   # Build on Windows
@@ -72,12 +167,12 @@ tutorial-os/
 
 ```bash
 # Build for Raspberry Pi Zero 2W with GPi Case
-make BOARD=rpi-zero2w-gpi
+make LANG=c BOARD=rpi-zero2w-gpi
 
 # Build for Raspberry Pi CM4
-make BOARD=rpi-cm4-io
+make LANG=rust BOARD=rpi-cm4-io
 
-# Build for Radxa Rock 2A
+# Build for Radxa Rock 2A defaults to C without lang specifier
 make BOARD=radxa-rock2a
 
 # Show build info
