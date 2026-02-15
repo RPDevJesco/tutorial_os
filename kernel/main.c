@@ -247,19 +247,34 @@ static const char *get_display_interface(hal_platform_id_t id, uint32_t width)
  * Boot chain stages — NULL-terminated arrays of stage names.
  * Drawn with arrows between them in the BOOT SEQUENCE panel.
  */
-static const char *boot_chain_bcm[]   = { "GPU ROM", "bootcode.bin", "start.elf", "kernel8.img", NULL };
-static const char *boot_chain_uboot[] = { "BootROM", "TPL", "U-Boot", "Image", NULL };
-static const char *boot_chain_rv2[]   = { "BROM", "FSBL", "OpenSBI", "U-Boot", "Image", NULL };
-
-static const char **get_boot_chain(hal_platform_id_t id)
+static const char *get_boot_stage(hal_platform_id_t id, int stage)
 {
     switch (id) {
         case HAL_PLATFORM_RADXA_ROCK2A:
-            return boot_chain_uboot;
+            switch (stage) {
+                case 0: return "BootROM";
+                case 1: return "TPL";
+                case 2: return "U-Boot";
+                case 3: return "Image";
+                default: return NULL;
+            }
         case HAL_PLATFORM_ORANGEPI_RV2:
-            return boot_chain_rv2;
-        default:
-            return boot_chain_bcm;
+            switch (stage) {
+                case 0: return "BROM";
+                case 1: return "FSBL";
+                case 2: return "OpenSBI";
+                case 3: return "U-Boot";
+                case 4: return "Image";
+                default: return NULL;
+            }
+        default: /* BCM / Raspberry Pi */
+            switch (stage) {
+                case 0: return "GPU ROM";
+                case 1: return "bootcode.bin";
+                case 2: return "start.elf";
+                case 3: return "kernel8.img";
+                default: return NULL;
+            }
     }
 }
 
@@ -466,7 +481,6 @@ void kernel_main(uintptr_t dtb_ptr, uintptr_t ram_base, uintptr_t ram_size)
     const char *arch_name   = get_arch_name(pinfo.arch);
     const char *arch_isa    = get_arch_isa(pinfo.platform_id);
     const char *disp_iface  = get_display_interface(pinfo.platform_id, fb.width);
-    const char **boot_chain = get_boot_chain(pinfo.platform_id);
 
     /*
      * Panel height computation:
@@ -887,25 +901,27 @@ void kernel_main(uintptr_t dtb_ptr, uintptr_t ram_base, uintptr_t ram_size)
     {
         uint32_t boot_h = panel_2row;
         ui_rect_t panel = ui_rect(L.left_x, cur_y, L.full_w, boot_h);
-        ui_draw_panel(&fb, panel, &theme, UI_PANEL_FLAT);
+        ui_draw_panel(&fb, panel, &theme, UI_PANEL_ELEVATED);
         uint32_t y = draw_panel_header(&fb, &L, &theme, L.left_x, cur_y,
                                        L.full_w, "BOOT SEQUENCE");
 
         /* Draw boot stages with arrows */
-        uint32_t bx = L.left_x + L.pad;
-        for (int i = 0; boot_chain[i] != NULL; i++) {
-            if (i > 0) {
-                fb_draw_string_transparent(&fb, bx, y, "->", theme.colors.accent);
-                bx += 3 * 8;
-            }
+		uint32_t bx = L.left_x + L.pad;
+		for (int i = 0; ; i++) {
+ 			const char *stage = get_boot_stage(pinfo.platform_id, i);
+    		if (!stage) break;
 
-            /* Last stage gets accent_bright (it's us!) */
-            bool is_last = (boot_chain[i + 1] == NULL);
-            fb_draw_string_transparent(&fb, bx, y, boot_chain[i],
-                                       is_last ? theme.colors.accent_bright :
-                                                 theme.colors.text_primary);
-            bx += (uint32_t)fb_text_width(boot_chain[i]) + 8;
-        }
+    		if (i > 0) {
+        		fb_draw_string_transparent(&fb, bx, y, "->", theme.colors.accent);
+        		bx += 3 * 8;
+    		}
+
+   		 	bool is_last = (get_boot_stage(pinfo.platform_id, i + 1) == NULL);
+    		fb_draw_string_transparent(&fb, bx, y, stage,
+                               is_last ? theme.colors.accent_bright :
+                                         theme.colors.text_primary);
+    		bx += (uint32_t)fb_text_width(stage) + 8;
+		}
 
         /* "(this code!)" annotation after the last stage */
         fb_draw_string_transparent(&fb, bx + 4, y, "(this code!)",
