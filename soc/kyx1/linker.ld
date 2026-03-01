@@ -181,6 +181,8 @@ SECTIONS
     .rodata : ALIGN(4K) {
         __rodata_start = .;
         *(.rodata .rodata.*)
+        *(.got .got.plt)          /* GOT entries for pointer arrays */
+        *(.srodata .srodata.*)    /* Small read-only data (RISC-V specific) */
         __rodata_end = .;
     } > RAM
 

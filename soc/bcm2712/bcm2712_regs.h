@@ -44,11 +44,11 @@
 /*
  * RP1 South Bridge
  */
-#define RP1_PERI_BASE           0x1f000d0000ULL
-#define RP1_GPIO_BASE           (RP1_PERI_BASE + 0x0d0000)
+#define RP1_PERI_BASE           0x1f00000000ULL             // ← actual RP1 base
+#define RP1_GPIO_BASE           (RP1_PERI_BASE + 0x0d0000)  // = 0x1f000d0000
 #define RP1_GPIO_IO_BANK0       (RP1_GPIO_BASE + 0x0000)
 #define RP1_GPIO_PADS_BANK0     (RP1_GPIO_BASE + 0x4000)
-#define RP1_UART0_BASE          (RP1_PERI_BASE + 0x030000)
+#define RP1_UART0_BASE          (RP1_PERI_BASE + 0x030000)  // = 0x1f00030000
 
 /*
  * Mailbox Tags
@@ -128,9 +128,8 @@
 
 /*
  * Bus address conversion
- * BCM2712 uses same L2 coherent alias as BCM2711
+ * BCM2712 - GPU returns physical addresses directly, no alias stripping needed
  */
-#define BCM_BUS_TO_ARM(addr)    ((addr) & ~0xC0000000)
-#define BCM_ARM_TO_BUS(addr)    ((addr) | 0xC0000000)
-
+#define BCM_BUS_TO_ARM(addr)    (addr)
+#define BCM_ARM_TO_BUS(addr)    (addr)
 #endif /* BCM2712_REGS_H */

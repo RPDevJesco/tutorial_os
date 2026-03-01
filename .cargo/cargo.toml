@@ -1,0 +1,78 @@
+# =============================================================================
+# .cargo/config.toml — Per-Target Build Settings
+# =============================================================================
+#
+# This is the Rust equivalent of ARCH_CFLAGS, LDFLAGS, and CROSS_COMPILE
+# from the C build system's board.mk files.
+#
+# Each [target.X] section configures how Cargo builds for that architecture.
+# The linker script (-Tsoc/xxx/linker.ld) is set here rather than in
+# Cargo.toml because it's target-specific.
+#
+# Usage:
+#   cargo build --target aarch64-unknown-none        --features "board-rpi-zero2w-gpi"
+#   cargo build --target riscv64gc-unknown-none-elf  --features "board-orangepi-rv2"
+#   cargo build --target x86_64-unknown-none         --features "board-lattepanda-iota"
+#
+# TIP: To avoid typing --target every time, uncomment ONE of the
+# [build] lines below to set a default target for this workspace.
+
+# ── Uncomment ONE to set a default target ──
+# [build]
+# target = "aarch64-unknown-none"
+# target = "riscv64gc-unknown-none-elf"
+# target = "x86_64-unknown-none"
+
+# =============================================================================
+# ARM64 (Raspberry Pi, Radxa, Le Potato)
+# =============================================================================
+#
+# C equivalent: aarch64-none-elf-gcc with -march=armv8-a -mgeneral-regs-only
+#
+# NOTE: The linker script is board-specific (bcm2710 loads at 0x80000,
+# bcm2711 at 0x80000, etc). You'll select the right one via build.rs
+# or by passing it as a rustflag per-board.
+
+[target.aarch64-unknown-none]
+rustflags = [
+    "-C", "link-arg=-nostartfiles",
+    # Linker script is set in build.rs based on active board feature
+]
+
+# =============================================================================
+# RISC-V 64 (Orange Pi RV2)
+# =============================================================================
+#
+# C equivalent: riscv64-linux-gnu-gcc with -march=rv64gc -mabi=lp64d
+#
+# The riscv64gc target already implies the G (IMAFD) + C extensions,
+# matching the C build's -march=rv64gc.
+
+[target.riscv64gc-unknown-none-elf]
+rustflags = [
+    "-C", "link-arg=-nostartfiles",
+    # Linker script is set in build.rs based on active board feature
+]
+
+# =============================================================================
+# x86_64 (LattePanda IOTA via UEFI)
+# =============================================================================
+#
+# C equivalent: x86_64-linux-gnu-gcc with -mno-red-zone -mno-sse
+
+[target.x86_64-unknown-none]
+rustflags = [
+    "-C", "link-arg=-nostartfiles",
+    # Linker script is set in build.rs based on active board feature
+]
+
+# =============================================================================
+# Runner (optional — for QEMU testing)
+# =============================================================================
+# Uncomment to enable `cargo run` for quick QEMU testing:
+#
+# [target.aarch64-unknown-none]
+# runner = "qemu-system-aarch64 -M raspi3b -kernel"
+#
+# [target.riscv64gc-unknown-none-elf]
+# runner = "qemu-system-riscv64 -M virt -bios none -kernel"

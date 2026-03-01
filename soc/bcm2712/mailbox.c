@@ -14,7 +14,6 @@
 #define MBOX_WRITE_REG   ((volatile uint32_t *)(BCM2712_MBOX_BASE + MBOX_WRITE))
 
 /* Aligned buffer for mailbox messages */
-static uint32_t __attribute__((aligned(16))) mbox_buf[64];
 
 /* =============================================================================
  * LOW-LEVEL MAILBOX
@@ -23,27 +22,64 @@ static uint32_t __attribute__((aligned(16))) mbox_buf[64];
 
 bool bcm_mailbox_call(bcm_mailbox_buffer_t *buffer, uint8_t channel)
 {
-    /* Convert to bus address (ARM physical | 0xC0000000 for L2 coherent) */
-    uint64_t addr = (uint64_t)(uintptr_t)buffer->data;
+    /*
+     * BCM2712 uses ARM physical addresses directly — no L2 coherent alias.
+     *
+     * BCM2711 required ORing 0xC0000000 to give the GPU a coherent view of
+     * ARM memory. BCM2712 (VC7) uses the same physical address space as the
+     * ARM cores. Applying the BCM2711 alias here sends the GPU to the wrong
+     * location entirely, causing it to read a garbage message and return
+     * whatever its internal default state is — 16bpp, producing the stripe
+     * artifact.
+     *
+     * BCM_ARM_TO_BUS is defined in bcm2712_regs.h as a no-op identity macro:
+     *   #define BCM_ARM_TO_BUS(addr)  (addr)
+     *
+     * Using the macro (rather than a raw cast) keeps the intent explicit and
+     * means this file automatically picks up any future change to the address
+     * translation policy without needing to be touched again.
+     *
+     * We pass the struct pointer itself, not buffer->data, matching the
+     * BCM2711 convention. The struct is typedef'd with HAL_ALIGNED(16) so
+     * the low 4 bits are always zero and safe to OR with the channel number.
+     */
+    uint64_t addr = (uint64_t)(uintptr_t)buffer;
 
-    /* Ensure address is in first 1GB for bus address conversion */
-    if (addr >= 0x40000000) {
+    /* Mailbox only supports 32-bit bus addresses. The buffer lives in .data
+     * or on the stack inside the first 1GB, so this should never fire.
+     * If it does, something is badly wrong with the memory layout.         */
+    if (addr >= 0x40000000ULL) {
         return false;
     }
 
-    uint32_t bus_addr = (uint32_t)addr | 0xC0000000;
+    uint32_t bus_addr = BCM_ARM_TO_BUS((uint32_t)addr);
 
-    /* Wait for mailbox to be ready */
+    /*
+     * DSB ST — flush all pending ARM stores to DRAM before handing the
+     * buffer address to the GPU. The Cortex-A76 is aggressively
+     * out-of-order; without this barrier the GPU may read the buffer before
+     * the ARM's writes have left the L1/L2 cache.
+     *
+     * "memory" in the clobber list is a compiler barrier — it prevents the
+     * compiler from reordering buffer writes across this asm statement.
+     * DSB ST is store-only (lighter than DSB SY) which is sufficient here
+     * because we only need to drain our own writes, not incoming loads.
+     */
+    __asm__ volatile ("dsb st" ::: "memory");
+
+    /* Wait until the WRITE register is not full */
     int timeout = 0x100000;
     while ((*MBOX_STATUS_REG & MBOX_FULL) && --timeout) {
         HAL_NOP();
     }
     if (timeout == 0) return false;
 
-    /* Write address + channel */
+    /* Write the buffer bus address with the channel number in the low 4 bits.
+     * The alignment guarantee on bcm_mailbox_buffer_t means bus_addr[3:0]
+     * are always 0, so the OR does not corrupt the address.               */
     *MBOX_WRITE_REG = bus_addr | channel;
 
-    /* Wait for response */
+    /* Wait for the GPU's response on our channel */
     timeout = 0x100000;
     while (1) {
         while ((*MBOX_STATUS_REG & MBOX_EMPTY) && --timeout) {
@@ -55,9 +91,20 @@ bool bcm_mailbox_call(bcm_mailbox_buffer_t *buffer, uint8_t channel)
         if ((response & 0xF) == channel) {
             break;
         }
+        /* Response was for a different channel — discard and keep waiting */
     }
 
-    /* Check response code */
+    /*
+     * DMB SY — ensure the GPU's writes to the response buffer are visible
+     * to the ARM before we read buffer->data[1]. Without this, the A76's
+     * cache may return a stale pre-response value.
+     *
+     * DMB (not DSB) is correct here — we need memory access ordering, not
+     * a full pipeline drain.
+     */
+    __asm__ volatile ("dmb sy" ::: "memory");
+
+    /* Response code 0x80000000 = success */
     return (buffer->data[1] == 0x80000000);
 }
 

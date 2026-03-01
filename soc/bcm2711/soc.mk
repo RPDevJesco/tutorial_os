@@ -31,4 +31,4 @@ SOC_DEFINES := -DSOC_BCM2711 -DPERIPHERAL_BASE=0xFE000000
 LINKER_SCRIPT := soc/bcm2711/linker.ld
 
 # Output kernel name
-KERNEL_NAME := kernel8.img
+KERNEL_NAME := kernel_2711.img

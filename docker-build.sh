@@ -75,38 +75,44 @@ show_toolchain_info() {
 build_board() {
     local board=$1
     local board_output_dir="${OUTPUT_DIR}/${board}"
-    
+
     log_header "Building: ${board}"
-    
+
     # Clean previous build for this board
     log_info "Cleaning previous build..."
     make clean BOARD="${board}" 2>/dev/null || true
-    
+
     # Build
     log_info "Compiling..."
     if make BOARD="${board}"; then
         # Create output directory
         mkdir -p "${board_output_dir}"
-        
-        # Copy kernel binary
+
+        # Query the kernel output name directly from the build system.
+        # This avoids hardcoding per-board names here and automatically picks up
+        # any future changes (e.g. kernel_2712.img, Image, kernel8.img, etc.)
         local kernel_name
-        if [[ "${board}" == radxa-* ]]; then
-            kernel_name="Image"
-        else
-            kernel_name="kernel8.img"
+        kernel_name=$(make -s BOARD="${board}" print-KERNEL_NAME 2>/dev/null)
+
+        if [[ -z "${kernel_name}" ]]; then
+            log_error "Could not determine KERNEL_NAME for board ${board} — is print-% defined in the Makefile?"
+            return 1
         fi
-        
+
         if [[ -f "build/${board}/${kernel_name}" ]]; then
             cp "build/${board}/${kernel_name}" "${board_output_dir}/"
             log_success "Copied ${kernel_name} to ${board_output_dir}/"
+        else
+            log_error "Expected kernel binary not found: build/${board}/${kernel_name}"
+            return 1
         fi
-        
+
         # Copy ELF file (useful for debugging)
         if [[ -f "build/${board}/kernel.elf" ]]; then
             cp "build/${board}/kernel.elf" "${board_output_dir}/"
             log_info "Copied kernel.elf to ${board_output_dir}/"
         fi
-        
+
         # Generate and copy disassembly
         if make disasm BOARD="${board}" 2>/dev/null; then
             if [[ -f "build/${board}/kernel.list" ]]; then
@@ -114,18 +120,18 @@ build_board() {
                 log_info "Copied kernel.list to ${board_output_dir}/"
             fi
         fi
-        
+
         # Copy board-specific boot files if they exist
         if [[ -d "board/${board}/boot" ]]; then
             cp -r "board/${board}/boot" "${board_output_dir}/"
             log_info "Copied boot files to ${board_output_dir}/boot/"
         fi
-        
+
         # Show file sizes
         echo ""
         log_info "Output files:"
         ls -lh "${board_output_dir}/"
-        
+
         log_success "Build complete for ${board}"
         return 0
     else
@@ -137,9 +143,9 @@ build_board() {
 build_all() {
     local failed_boards=()
     local success_boards=()
-    
+
     log_header "Building All Boards"
-    
+
     for board in "${ALL_BOARDS[@]}"; do
         if build_board "${board}"; then
             success_boards+=("${board}")
@@ -147,17 +153,17 @@ build_all() {
             failed_boards+=("${board}")
         fi
     done
-    
+
     # Summary
     log_header "Build Summary"
-    
+
     if [[ ${#success_boards[@]} -gt 0 ]]; then
         echo -e "${GREEN}Successful builds:${NC}"
         for board in "${success_boards[@]}"; do
             echo "  ✓ ${board}"
         done
     fi
-    
+
     if [[ ${#failed_boards[@]} -gt 0 ]]; then
         echo -e "${RED}Failed builds:${NC}"
         for board in "${failed_boards[@]}"; do
@@ -165,14 +171,14 @@ build_all() {
         done
         return 1
     fi
-    
+
     echo ""
     log_info "Output directory structure:"
     find "${OUTPUT_DIR}" -type f | sort | while read -r file; do
         size=$(ls -lh "$file" | awk '{print $5}')
         echo "  ${file} (${size})"
     done
-    
+
     return 0
 }
 
@@ -226,11 +232,11 @@ else
             failed=1
             continue
         fi
-        
+
         if ! build_board "${board}"; then
             failed=1
         fi
     done
-    
+
     exit $failed
 fi

@@ -88,7 +88,7 @@ OTHER_C_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_C_SOURCES))
 ALL_OBJECTS := $(ASM_OBJECTS) $(SOC_C_OBJECTS) $(HAL_C_OBJECTS) $(OTHER_C_OBJECTS)
 
 # Targets
-.PHONY: all clean info disasm
+.PHONY: all clean info disasm print-%
 
 all: $(BUILD_DIR)/$(KERNEL_NAME)
 	@echo ""
@@ -137,6 +137,12 @@ image: $(BUILD_DIR)/$(KERNEL_NAME)
 clean:
 	@echo "Cleaning build directory..."
 	@rm -rf build/
+
+# Print any Makefile variable — used by docker-build.sh to query KERNEL_NAME
+# without hardcoding board-specific names in the script.
+# Usage: make print-KERNEL_NAME BOARD=rpi-cm5-io
+print-%:
+	@echo $($*)
 
 info:
 	@echo "Board:     $(BOARD)"

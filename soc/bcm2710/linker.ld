@@ -2,7 +2,6 @@
  * soc/bcm2710/linker.ld - BCM2710 Linker Script
  * ==============================================
  *
- * This matches the original working linker.ld
  *
  * RASPBERRY PI ZERO 2W MEMORY MAP:
  * --------------------------------

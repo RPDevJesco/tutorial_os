@@ -1,60 +1,234 @@
-# Raspberry Pi CM5 IO Board - Tutorial-OS Boot Configuration
-# ==========================================================
+# =============================================================================
+# config.txt — Universal Raspberry Pi Boot Configuration
+# =============================================================================
+# Compatible hardware:
+#   Boards  : Pi Zero 2W, Pi 3A+/3B/3B+, Pi 4B/400, Pi 5
+#             CM4 (Waveshare CM4-IO-BASE-A, Official CM4 IO Board, and similar)
+#             CM5 (Official CM5 IO Board and similar)
+#   Cases   : Retroflag GPI Case 2W  (Pi Zero 2W)
+#             Retroflag GPI Case 2   (CM4 Lite)
+#   Displays: DPI 640×480 (GPI Cases), standard/dual HDMI (all others)
 #
-# Place this file on the FAT32 boot partition as config.txt
+# PLACEMENT:
+#   Bookworm+  → /boot/firmware/config.txt
+#   Bullseye   → /boot/config.txt
+#
+# QUICK SETUP — Find "ACTIVE DISPLAY" and enable exactly ONE block:
+#   GPI Case 2W / GPI Case 2 → uncomment [DISPLAY: GPI_DPI]
+#   HDMI output (Pi 4/5, CM4, CM5, headless) → uncomment [DISPLAY: HDMI]
+#
+# ⚠ IMPORTANT — DPI vs HDMI driver:
+#   The two display blocks set the V3D overlay differently on purpose:
+#     GPI_DPI uses vc4-FKMS-v3d (legacy KMS) — required for DPI parallel output
+#     HDMI    uses vc4-KMS-v3d  (full KMS)   — preferred for HDMI on Pi 4/5/CM4/CM5
+#   Do NOT mix them. Uncommenting both will cause the DPI panel to go dark.
+# =============================================================================
 
-# ============================================
-# CORE SETTINGS
-# ============================================
 
-# Boot in 64-bit mode
+# =============================================================================
+# UNIVERSAL BASE SETTINGS
+# Apply to all boards unless overridden in a model section below.
+# =============================================================================
+
+# 64-bit kernel (BCM2837 / BCM2711 / BCM2712).
 arm_64bit=1
 
-# Disable GPU firmware kernel loading (we load our own)
-kernel=kernel8.img
+# Explicit 64-bit kernel image name.
+# kernel=kernel8.img
 
-# Disable command line (bare metal, no Linux)
-# cmdline=
+# critical: without this, firmware assumes Linux and loads your code at 0x200000 instead of 0x80000
+os_check=0
 
-# ============================================
-# MEMORY CONFIGURATION
-# ============================================
+# leaves PCIe pre-configured so you can access RP1 peripherals without writing your own PCIe RC bringup driver
+pciex4_reset=0
 
-# Give ARM maximum memory (minimum to GPU)
-gpu_mem=16
+# Load initramfs automatically if one is present on the boot partition.
+auto_initramfs=1
 
-# ============================================
-# UART CONSOLE
-# ============================================
-
-# Enable UART for debugging
+# Serial console on GPIO 14/15 — essential for bare-metal and early boot debug.
 enable_uart=1
 
-# Use miniUART on GPIO 14/15 (directly accessible, not through RP1)
-# Note: BCM2712/Pi5 has different UART routing than Pi4
-
-# ============================================
-# DISPLAY (DPI) CONFIGURATION
-# ============================================
-
-# Enable DPI output if using parallel RGB display
-# Uncomment for DPI displays:
-# dtoverlay=vc4-kms-dpi-generic
-# gpio=0-27=a2
-
-# ============================================
-# CM5-SPECIFIC SETTINGS
-# ============================================
-
-# Disable Bluetooth (frees up UART)
-dtoverlay=disable-bt
-
-# Disable WiFi if not needed
-# dtoverlay=disable-wifi
-
-# ============================================
-# BOOT DELAY
-# ============================================
-
-# No boot delay
+# Suppress boot delay.
 boot_delay=0
+
+# Disable overscan for modern displays.
+disable_overscan=1
+
+# Prevent display blanking via HDMI blank signals.
+hdmi_blanking=1
+
+# NOTE: disable_fw_kms_setup=1 is intentionally NOT set here.
+# That flag only applies to vc4-kms-v3d (full KMS). Setting it globally
+# prevents the VideoCore firmware from completing its handoff when
+# vc4-fkms-v3d (legacy KMS) is active, which silently kills the DPI panel.
+# It is set only inside the [DISPLAY: HDMI] block where full KMS is in use.
+
+# Camera auto-detect — disabled globally; turn on per-project if needed.
+camera_auto_detect=0
+
+# Display auto-detect — disabled globally.
+# Enabling this alongside DPI overlays causes the DPI panel to go dark.
+# Safe to enable for pure HDMI setups with no DPI display attached.
+display_auto_detect=0
+
+# Disable activity LED — clean look for embedded/handheld products.
+# Comment these two lines out to restore LED behaviour during development.
+dtparam=act_led_trigger=none
+dtparam=act_led_activelow=on
+
+# Audio — off globally; enabled per-display-block or per-model below.
+dtparam=audio=off
+disable_audio_dither=1
+
+
+# =============================================================================
+# GPU / MEMORY SPLIT
+# =============================================================================
+gpu_mem_256=128
+gpu_mem_512=128
+gpu_mem_1024=128
+gpu_mem_2048=64
+gpu_mem_4096=64
+gpu_mem_8192=64
+
+
+# =============================================================================
+# ACTIVE DISPLAY — Enable exactly ONE block below.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# [DISPLAY: GPI_DPI]
+# Retroflag GPI Case 2W (Pi Zero 2W) and GPI Case 2 (CM4 Lite)
+# 640×480 IPS panel driven by 24-bit parallel DPI interface.
+#
+# ⚠ Requires vc4-FKMS-v3d (legacy KMS). Full KMS (vc4-kms-v3d) does NOT
+#   support parallel DPI output and will leave the panel dark.
+#
+# HOW TO ACTIVATE  : Remove the leading '#' from every line in this block.
+# HOW TO DEACTIVATE: Restore the leading '#' (default state below).
+# -----------------------------------------------------------------------------
+# dtoverlay=vc4-fkms-v3d
+# max_framebuffers=2
+#
+# dtoverlay=dpi24
+# display_rotate=0
+# overscan_left=0
+# overscan_right=0
+# overscan_top=0
+# overscan_bottom=0
+# framebuffer_width=640
+# framebuffer_height=480
+# enable_dpi_lcd=1
+# display_default_lcd=1
+# dpi_group=2
+# dpi_mode=87
+# dpi_output_format=0x00016
+#
+# # Panel timings for the GPI Case 2 and GPI Case 2W 640x480 IPS display.
+# # Pixel clock: 24 MHz. Horizontal blanking: 41 front, 40 sync, 41 back.
+# # Vertical blanking: 18 front, 9 sync, 18 back.
+# hdmi_timings=640 0 41 40 41 480 0 18 9 18 0 0 0 60 0 24000000 1
+#
+# # GPI Case 2W: PWM audio via GPIO pins
+# dtoverlay=pwm-audio-pizero-gpicase
+# disable_pvt=1
+# dtparam=audio=on
+# audio_pwm_mode=2
+
+# -----------------------------------------------------------------------------
+# [DISPLAY: HDMI]
+# Standard HDMI — Pi 4, Pi 5, CM4 carrier boards, CM5, headless/desktop.
+#
+# ⚠ Requires vc4-KMS-v3d (full KMS). Do not mix with the DPI block above.
+#
+# HOW TO ACTIVATE  : Remove the leading '#' from every line in this block.
+# HOW TO DEACTIVATE: Restore the leading '#' (default state below).
+#
+# CURRENTLY ACTIVE for CM5 IO Board.
+# -----------------------------------------------------------------------------
+dtoverlay=vc4-kms-v3d
+max_framebuffers=2
+
+# disable_fw_kms_setup=1 prevents the firmware from creating a video= cmdline
+# parameter that conflicts with the kernel's KMS mode negotiation on Pi 4/5.
+disable_fw_kms_setup=1
+
+dtparam=audio=on
+
+[HDMI:0]
+hdmi_force_hotplug=1
+hdmi_group=1
+hdmi_mode=16
+hdmi_drive=2
+
+
+# =============================================================================
+# PI ZERO 2W — BCM2837B0 (512 MB, quad-core Cortex-A53 @ 1 GHz)
+# =============================================================================
+[pi02]
+armstub=armstub8.bin
+dtoverlay=dwc2,dr_mode=host
+arm_freq=1000
+gpu_freq=400
+core_freq=400
+sdram_freq=500
+sdram_schmoo=0x02000020
+over_voltage=6
+sdram_over_voltage=2
+
+
+# =============================================================================
+# PI 3 / 3A+ / 3B / 3B+ — BCM2837 / BCM2837B0
+# =============================================================================
+[pi3]
+armstub=armstub8.bin
+dtparam=audio=on
+
+
+# =============================================================================
+# PI 4B / PI 400 — BCM2711 (1-8 GB LPDDR4)
+# =============================================================================
+[pi4]
+arm_boost=1
+dtparam=audio=on
+
+
+# =============================================================================
+# PI 5 — BCM2712 + RP1 southbridge
+# =============================================================================
+[pi5]
+max_framebuffers=4
+#dtparam=pciex1_gen=3
+#dtoverlay=disable-bt
+#dtoverlay=disable-wifi
+
+
+# =============================================================================
+# CM4 — Compute Module 4 (BCM2711)
+# =============================================================================
+[cm4]
+otg_mode=1
+dtparam=i2c_arm=on
+#dtparam=pciex1_gen=3
+#dtoverlay=gpio-fan,gpiopin=18,temp=55000
+#dtoverlay=vc4-kms-dsi-7inch,dsi0
+#dtoverlay=vc4-kms-dsi-7inch,dsi1
+
+
+# =============================================================================
+# CM5 — Compute Module 5 (BCM2712 + RP1)
+# =============================================================================
+[cm5]
+dtoverlay=dwc2,dr_mode=host
+dtparam=i2c_arm=on
+max_framebuffers=4
+#dtparam=pciex1_gen=3
+#dtoverlay=disable-bt
+#dtoverlay=disable-wifi
+
+
+# =============================================================================
+# ALL — Final catch-all.
+# =============================================================================
+[all]
+overscan_scale=1
