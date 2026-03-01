@@ -131,5 +131,5 @@
  * BCM2712 - GPU returns physical addresses directly, no alias stripping needed
  */
 #define BCM_BUS_TO_ARM(addr)    (addr)
-#define BCM_ARM_TO_BUS(addr)    (addr)
+#define BCM_ARM_TO_BUS(addr)    ((addr) | 0xC0000000)
 #endif /* BCM2712_REGS_H */
