@@ -1,21 +1,8 @@
 # =============================================================================
-# config.txt — Universal Raspberry Pi Boot Configuration
+# config.txt — Raspberry Pi 5 Boot Configuration
 # =============================================================================
 # Compatible hardware:
-#   Boards  : Pi Zero 2W, Pi 3A+/3B/3B+, Pi 4B/400, Pi 5
-#             CM4 (Waveshare CM4-IO-BASE-A, Official CM4 IO Board, and similar)
-#             CM5 (Official CM5 IO Board and similar)
-#   Cases   : Retroflag GPI Case 2W  (Pi Zero 2W)
-#             Retroflag GPI Case 2   (CM4 Lite)
-#   Displays: DPI 640×480 (GPI Cases), standard/dual HDMI (all others)
-#
-# PLACEMENT:
-#   Bookworm+  → /boot/firmware/config.txt
-#   Bullseye   → /boot/config.txt
-#
-# QUICK SETUP — Find "ACTIVE DISPLAY" and enable exactly ONE block:
-#   GPI Case 2W / GPI Case 2 → uncomment [DISPLAY: GPI_DPI]
-#   HDMI output (Pi 4/5, CM4, CM5, headless) → uncomment [DISPLAY: HDMI]
+#   Boards  : Pi 5, CM5 (Official CM5 IO Board and similar)
 #
 # ⚠ IMPORTANT — DPI vs HDMI driver:
 #   The two display blocks set the V3D overlay differently on purpose:
@@ -24,23 +11,16 @@
 #   Do NOT mix them. Uncommenting both will cause the DPI panel to go dark.
 # =============================================================================
 
-
 # =============================================================================
 # UNIVERSAL BASE SETTINGS
 # Apply to all boards unless overridden in a model section below.
 # =============================================================================
 
-# 64-bit kernel (BCM2837 / BCM2711 / BCM2712).
+# 64-bit kernel (BCM2712).
 arm_64bit=1
 
 # Explicit 64-bit kernel image name.
-# kernel=kernel8.img
-
-# critical: without this, firmware assumes Linux and loads your code at 0x200000 instead of 0x80000
-os_check=0
-
-# leaves PCIe pre-configured so you can access RP1 peripherals without writing your own PCIe RC bringup driver
-pciex4_reset=0
+kernel=kernel_2712.img
 
 # Load initramfs automatically if one is present on the boot partition.
 auto_initramfs=1
@@ -56,12 +36,6 @@ disable_overscan=1
 
 # Prevent display blanking via HDMI blank signals.
 hdmi_blanking=1
-
-# NOTE: disable_fw_kms_setup=1 is intentionally NOT set here.
-# That flag only applies to vc4-kms-v3d (full KMS). Setting it globally
-# prevents the VideoCore firmware from completing its handoff when
-# vc4-fkms-v3d (legacy KMS) is active, which silently kills the DPI panel.
-# It is set only inside the [DISPLAY: HDMI] block where full KMS is in use.
 
 # Camera auto-detect — disabled globally; turn on per-project if needed.
 camera_auto_detect=0
@@ -80,79 +54,40 @@ dtparam=act_led_activelow=on
 dtparam=audio=off
 disable_audio_dither=1
 
+# critical: without this, firmware assumes Linux and loads at 0x200000
+# instead of 0x80000, crashing immediately on boot
+os_check=0
+
+# leaves PCIe pre-configured so RP1 peripherals (GPIO, UART, USB) are
+# accessible without writing your own PCIe root complex driver
+pciex4_reset=0
 
 # =============================================================================
 # GPU / MEMORY SPLIT
+# Per-RAM-size keys cover every shipping variant from Zero 2W to Pi 5 8GB.
+# On Pi 4/5 with KMS/DRM the GPU split is advisory (CMA manages VRAM),
+# but explicit values prevent legacy-driver edge cases.
 # =============================================================================
 gpu_mem_256=128
-gpu_mem_512=128
-gpu_mem_1024=128
-gpu_mem_2048=64
-gpu_mem_4096=64
-gpu_mem_8192=64
+gpu_mem_512=128      # Pi Zero 2W (true 512 MB), Pi 3A+
+gpu_mem_1024=128     # Pi 3B+, Pi 4 1GB
+gpu_mem_2048=64      # Pi 4 2GB
+gpu_mem_4096=64      # Pi 4 4GB / Pi 5 4GB
+gpu_mem_8192=64      # Pi 4 8GB / Pi 5 8GB
 
+max_framebuffers=4
+framebuffer_depth=32
+framebuffer_ignore_alpha=1
 
 # =============================================================================
 # ACTIVE DISPLAY — Enable exactly ONE block below.
 # =============================================================================
-
 # -----------------------------------------------------------------------------
-# [DISPLAY: GPI_DPI]
-# Retroflag GPI Case 2W (Pi Zero 2W) and GPI Case 2 (CM4 Lite)
-# 640×480 IPS panel driven by 24-bit parallel DPI interface.
-#
-# ⚠ Requires vc4-FKMS-v3d (legacy KMS). Full KMS (vc4-kms-v3d) does NOT
-#   support parallel DPI output and will leave the panel dark.
-#
-# HOW TO ACTIVATE  : Remove the leading '#' from every line in this block.
-# HOW TO DEACTIVATE: Restore the leading '#' (default state below).
-# -----------------------------------------------------------------------------
-# dtoverlay=vc4-fkms-v3d
-# max_framebuffers=2
-#
-# dtoverlay=dpi24
-# display_rotate=0
-# overscan_left=0
-# overscan_right=0
-# overscan_top=0
-# overscan_bottom=0
-# framebuffer_width=640
-# framebuffer_height=480
-# enable_dpi_lcd=1
-# display_default_lcd=1
-# dpi_group=2
-# dpi_mode=87
-# dpi_output_format=0x00016
-#
-# # Panel timings for the GPI Case 2 and GPI Case 2W 640x480 IPS display.
-# # Pixel clock: 24 MHz. Horizontal blanking: 41 front, 40 sync, 41 back.
-# # Vertical blanking: 18 front, 9 sync, 18 back.
-# hdmi_timings=640 0 41 40 41 480 0 18 9 18 0 0 0 60 0 24000000 1
-#
-# # GPI Case 2W: PWM audio via GPIO pins
-# dtoverlay=pwm-audio-pizero-gpicase
-# disable_pvt=1
-# dtparam=audio=on
-# audio_pwm_mode=2
-
-# -----------------------------------------------------------------------------
-# [DISPLAY: HDMI]
-# Standard HDMI — Pi 4, Pi 5, CM4 carrier boards, CM5, headless/desktop.
-#
-# ⚠ Requires vc4-KMS-v3d (full KMS). Do not mix with the DPI block above.
-#
-# HOW TO ACTIVATE  : Remove the leading '#' from every line in this block.
-# HOW TO DEACTIVATE: Restore the leading '#' (default state below).
-#
-# CURRENTLY ACTIVE for CM5 IO Board.
+# [DISPLAY: HDMI] — ACTIVE
 # -----------------------------------------------------------------------------
 dtoverlay=vc4-kms-v3d
 max_framebuffers=2
-
-# disable_fw_kms_setup=1 prevents the firmware from creating a video= cmdline
-# parameter that conflicts with the kernel's KMS mode negotiation on Pi 4/5.
 disable_fw_kms_setup=1
-
 dtparam=audio=on
 
 [HDMI:0]
@@ -163,72 +98,47 @@ hdmi_drive=2
 
 
 # =============================================================================
-# PI ZERO 2W — BCM2837B0 (512 MB, quad-core Cortex-A53 @ 1 GHz)
-# =============================================================================
-[pi02]
-armstub=armstub8.bin
-dtoverlay=dwc2,dr_mode=host
-arm_freq=1000
-gpu_freq=400
-core_freq=400
-sdram_freq=500
-sdram_schmoo=0x02000020
-over_voltage=6
-sdram_over_voltage=2
-
-
-# =============================================================================
-# PI 3 / 3A+ / 3B / 3B+ — BCM2837 / BCM2837B0
-# =============================================================================
-[pi3]
-armstub=armstub8.bin
-dtparam=audio=on
-
-
-# =============================================================================
-# PI 4B / PI 400 — BCM2711 (1-8 GB LPDDR4)
-# =============================================================================
-[pi4]
-arm_boost=1
-dtparam=audio=on
-
-
-# =============================================================================
 # PI 5 — BCM2712 + RP1 southbridge
 # =============================================================================
+
 [pi5]
-max_framebuffers=4
+# Pi 5 has no analog audio jack; audio is HDMI or USB only.
+# Pi 5 firmware bootstraps multicore internally — no armstub file needed.
+# RP1 routes UARTs differently; the primary UART (GPIO 14/15) is /dev/ttyAMA0
+# and Bluetooth has its own dedicated UART — no conflict with enable_uart=1.
+
+# PCIe Gen 3 — experimental; not all NVMe drives stable at Gen 3:
 #dtparam=pciex1_gen=3
+
+# Disable Bluetooth (only if you need the primary UART fully unshared):
 #dtoverlay=disable-bt
+
+# Disable WiFi (for RFI-sensitive or regulatory environments):
 #dtoverlay=disable-wifi
-
-
-# =============================================================================
-# CM4 — Compute Module 4 (BCM2711)
-# =============================================================================
-[cm4]
-otg_mode=1
-dtparam=i2c_arm=on
-#dtparam=pciex1_gen=3
-#dtoverlay=gpio-fan,gpiopin=18,temp=55000
-#dtoverlay=vc4-kms-dsi-7inch,dsi0
-#dtoverlay=vc4-kms-dsi-7inch,dsi1
-
 
 # =============================================================================
 # CM5 — Compute Module 5 (BCM2712 + RP1)
+# Tested with: Official CM5 IO Board
 # =============================================================================
+
 [cm5]
+# CM5 uses dwc2 for USB host (unlike CM4 which uses otg_mode=1).
+# This is intentional and matches the official CM5 IO Board reference config.
 dtoverlay=dwc2,dr_mode=host
+
 dtparam=i2c_arm=on
-max_framebuffers=4
+
+# PCIe / NVMe (same caveats as CM4 above):
 #dtparam=pciex1_gen=3
+
+# Disable Bluetooth / WiFi if needed for this carrier board:
 #dtoverlay=disable-bt
 #dtoverlay=disable-wifi
 
-
 # =============================================================================
 # ALL — Final catch-all.
+# Settings here apply after all model-specific sections above.
 # =============================================================================
 [all]
+# Preserve aspect ratio when overscan is active (safe no-op when it's off).
 overscan_scale=1
