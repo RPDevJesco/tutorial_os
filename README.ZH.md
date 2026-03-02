@@ -8,12 +8,12 @@
 |---------------------------------|--------------|----------|----------------|------------|
 | Raspberry Pi Zero 2W + GPi 外壳 | BCM2710      | ARM      | ✅ 已完成       | ✅ 通过    |
 | Raspberry Pi 4B / CM4           | BCM2711      | ARM      | ✅ 已完成       | ✅ 通过    |
-| Raspberry Pi 5 / CM5            | BCM2712      | ARM      | ❌ 未完成       | ✅ 通过    |
+| Raspberry Pi 5 / CM5            | BCM2712      | ARM      | ✅ 已完成       | ✅ 通过    |
 | Radxa Rock 2A                   | RK3528A      | ARM      | ❌ 未完成       | ❌ 失败    |
 | LattePanda Iota                 | N150         | x86_64   | ❌ 未完成       | ❌ 失败    |
 | LattePanda MU 计算模块          | N100         | x86_64   | ❌ 未完成       | ❌ 失败    |
 | Orange Pi RV 2                  | KYX1         | RISC-V   | ✅ 已完成       | ✅ 通过    |
-| Libre Le Potato                 | AML-s905X-CC | ARM      | ✅ 已完成       | ❌ 失败    |
+| Libre Le Potato                 | AML-s905X-CC | ARM      | ❌ 未完成       | ❌ 失败    |
 
 [https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b](https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b)
 
