@@ -86,7 +86,6 @@ framebuffer_ignore_alpha=1
 # [DISPLAY: HDMI] — ACTIVE
 # -----------------------------------------------------------------------------
 dtoverlay=vc4-kms-v3d
-max_framebuffers=2
 disable_fw_kms_setup=1
 dtparam=audio=on
 
