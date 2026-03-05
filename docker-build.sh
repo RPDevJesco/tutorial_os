@@ -20,8 +20,6 @@ ALL_BOARDS=(
     "rpi-zero2w-gpi"
     "rpi-cm4-io"
     "rpi-cm5-io"
-    "radxa-rock2a"
-    "libre-la-potato"
     "orangepi-rv2"
 )
 

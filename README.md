@@ -4,16 +4,14 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 
 ## Supported Platforms
 
-| Board                           | SoC               | Architecture | Implementation Status | Build Status |
-|---------------------------------|-------------------|--------------|-----------------------|--------------|
-| Raspberry Pi Zero 2W + GPi Case | BCM2710           | ARM          | ✅ Complete           | ✅ Passing  |
-| Raspberry Pi 4B / CM4           | BCM2711           | ARM          | ✅ Complete           | ✅ Passing  |
-| Raspberry Pi 5 / CM5            | BCM2712           | ARM          | ✅ Complete           | ✅ Passing  |
-| Radxa Rock 2A                   | RK3528A           | ARM          | ❌ InComplete         | ❌ Failing  |
-| LattePanda Iota                 | N150              | x86_64       | ❌ InComplete         | ❌ Failing  |
-| LattePanda MU Compute           | N100              | x86_64       | ❌ InComplete         | ❌ Failing  |
-| Orange Pi RV 2                  | KYX1              | RISC-V       | ✅ Complete           | ✅ Passing  |
-| Libre Le Potato                 | AML-s905X-CC      | ARM          | ❌ InComplete         | ❌ Failing  |
+| Board                           | SoC              | Architecture | Implementation Status | Build Status  |
+|---------------------------------|------------------|-------------|-----------------------|---------------|
+| Raspberry Pi Zero 2W + GPi Case | BCM2710          | ARM    | ✅ Complete            | ✅ Passing     |
+| Raspberry Pi 4B / CM4           | BCM2711          | ARM    | ✅ Complete            | ✅ Passing     |
+| Raspberry Pi 5 / CM5            | BCM2712          | ARM    | ✅ Complete            | ✅ Passing     |
+| Orange Pi RV 2                  | KYX1             | RISC-V | ✅ Complete            | ✅ Passing     |
+| LattePanda Iota                 | N150             | x86_64 | ❌ InComplete          | ❌ Failing     |
+| LattePanda MU Compute           | N100             | x86_64 | ❌ InComplete          | ❌ Failing     |
 | Milk-V Mars                     | Starfive JHH7110  | RISC-V       | ❌ InComplete         | ❌ Failing  |
 
 https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
@@ -388,5 +386,12 @@ int32_t temp = hal_platform_get_temp_celsius();
 - TSADC for temperature
 
 ## License
+
+## Build Boards with Blobs
+
+Specify the board you want to final compile such as orangepi, radxa rock 2a, le-potato
+```bash
+ docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=orangepi-rv2 image
+```
 
 Educational use. See LICENSE file.
