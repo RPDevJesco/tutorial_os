@@ -25,7 +25,7 @@ When you apply power to a Raspberry Pi, here's what happens:
    - This is `boot.S` - your first instructions
    - You must set up everything: stack, BSS, MMU...
 
-## 📁 Files
+## Files
 
 ### boot.S - First Instructions
 The very first code to execute. Written in assembly because:
@@ -50,7 +50,7 @@ A "linker script" that tells the linker where to put things:
 
 Think of it as a blueprint for your kernel's memory layout.
 
-## 🧠 Key Concepts
+## Key Concepts
 
 ### Exception Levels (EL)
 ARM64 has privilege levels (like x86 rings):
@@ -86,7 +86,7 @@ the hardware. We can parse this to discover:
 - Which peripherals are present
 - Interrupt mappings
 
-## 🔧 Building
+## Building
 
 ```bash
 # Assemble boot.S
@@ -102,7 +102,7 @@ aarch64-none-elf-ld -T linker.ld boot.o main.o -o kernel.elf
 aarch64-none-elf-objcopy -O binary kernel.elf kernel8.img
 ```
 
-## 📖 Further Reading
+## Further Reading
 
 - `boot.S` - Heavily commented, read line by line
 - `linker.ld` - Explains each section

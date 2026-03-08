@@ -358,10 +358,10 @@ int32_t temp = hal_platform_get_temp_celsius();
 1. **创建 SoC 目录**：`soc/newsoc/`
 2. **实现 HAL 接口**：
 
-   * `timer.c` - 定时器/延时函数
-   * `gpio.c` - GPIO 控制
-   * `soc_init.c` - 平台初始化
-   * `display_*.c` - 显示驱动
+    * `timer.c` - 定时器/延时函数
+    * `gpio.c` - GPIO 控制
+    * `soc_init.c` - 平台初始化
+    * `display_*.c` - 显示驱动
 3. **创建寄存器头文件**：`newsoc_regs.h`
 4. **创建构建规则**：`soc.mk`
 5. **创建板级配置**：`board/newboard/board.mk`

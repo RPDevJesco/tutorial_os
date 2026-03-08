@@ -2,7 +2,7 @@
 
 This directory mostly contains the headers that compilers expect to exist when compiling.
 
-## 📁 Files
+## Files
 
 ### string.c
 the compiler needs actual linkable symbols for its auto-generated calls.

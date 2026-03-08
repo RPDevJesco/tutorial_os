@@ -3,7 +3,7 @@
 Device drivers are the code that knows how to communicate with specific
 hardware. Each peripheral has its own protocol, registers, and quirks.
 
-## 📁 Structure
+## Structure
 
 ```
 drivers/
@@ -44,7 +44,7 @@ __asm__ volatile("dmb sy" ::: "memory");
 ```
 This ensures all previous memory accesses complete before continuing.
 
-## 📚 Driver Complexity Spectrum
+## Driver Complexity Spectrum
 
 From simplest to most complex:
 
@@ -77,7 +77,7 @@ From simplest to most complex:
 - Device enumeration
 - ~2000+ lines
 
-## 🎯 Reading Order
+## Reading Order
 
 1. **gpio/** - Start here! Simple register manipulation
 2. **mailbox/** - Learn the GPU communication pattern
@@ -85,7 +85,7 @@ From simplest to most complex:
 4. **audio/** - See clock configuration and real-time concerns
 5. **usb/** - Deep dive into complex protocol stacks
 
-## 🔧 Common Patterns
+## Common Patterns
 
 ### Register Definitions
 ```c
@@ -124,10 +124,6 @@ while (!(mmio_read(STATUS) & READY_BIT)) {
 // CPU sleeps until hardware signals completion
 ```
 
-## 📖 Further Reading
+## Further Reading
 
 Each driver directory has its own README with hardware-specific details.
-
-
-fatload mmc 0:5 0x20000000 tutorial-os-rv2.bin
-booti 0x20000000 - $fdtcontroladdr

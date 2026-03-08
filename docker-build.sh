@@ -21,6 +21,7 @@ ALL_BOARDS=(
     "rpi-cm4-io"
     "rpi-cm5-io"
     "orangepi-rv2"
+    "milkv-mars"
 )
 
 # Output directory (mounted from host)
@@ -103,6 +104,20 @@ build_board() {
         else
             log_error "Expected kernel binary not found: build/${board}/${kernel_name}"
             return 1
+        fi
+
+        # After kernel build, generate SD image if mkimage.sh exists
+        if [[ -x "board/${board}/mkimage.sh" ]]; then
+            log_info "Creating SD image..."
+            if make image BOARD="${board}"; then
+                # Copy the .img file to output
+                if [[ -f "build/${board}/${board}.img" ]]; then
+                    cp "build/${board}/${board}.img" "${board_output_dir}/"
+                    log_success "Copied ${board}.img to ${board_output_dir}/"
+                fi
+            else
+                log_error "Image creation failed for ${board}"
+            fi
         fi
 
         # Copy ELF file (useful for debugging)

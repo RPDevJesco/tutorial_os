@@ -4,15 +4,15 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 
 ## Supported Platforms
 
-| Board                           | SoC              | Architecture | Implementation Status | Build Status  |
-|---------------------------------|------------------|-------------|-----------------------|---------------|
-| Raspberry Pi Zero 2W + GPi Case | BCM2710          | ARM    | ✅ Complete            | ✅ Passing     |
-| Raspberry Pi 4B / CM4           | BCM2711          | ARM    | ✅ Complete            | ✅ Passing     |
-| Raspberry Pi 5 / CM5            | BCM2712          | ARM    | ✅ Complete            | ✅ Passing     |
-| Orange Pi RV 2                  | KYX1             | RISC-V | ✅ Complete            | ✅ Passing     |
-| LattePanda Iota                 | N150             | x86_64 | ❌ InComplete          | ❌ Failing     |
-| LattePanda MU Compute           | N100             | x86_64 | ❌ InComplete          | ❌ Failing     |
-| Milk-V Mars                     | Starfive JHH7110  | RISC-V       | ❌ InComplete         | ❌ Failing  |
+| Board                           | SoC             | Architecture | Implementation Status | Build Status    |
+|---------------------------------|-----------------|--------------|-----------------------|-----------------|
+| Raspberry Pi Zero 2W + GPi Case | BCM2710         | ARM          | ✅ Complete           | ✅ Passing      |
+| Raspberry Pi 4B / CM4           | BCM2711         | ARM          | ✅ Complete           | ✅ Passing      |
+| Raspberry Pi 5 / CM5            | BCM2712         | ARM          | ✅ Complete           | ✅ Passing      |
+| Orange Pi RV 2                  | KYX1            | RISC-V       | ✅ Complete           | ✅ Passing      |
+| LattePanda Iota                 | N150            | x86_64       | ❌ InComplete         | ❌ Failing      |
+| LattePanda MU Compute           | N100            | x86_64       | ❌ InComplete         | ❌ Failing      |
+| Milk-V Mars                     | Starfive JH7110 | RISC-V       | ✅ Complete           | ✅ Passing      |
 
 https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
 
@@ -65,12 +65,27 @@ tutorial-os/
 │   │   └── timer.c             # Timer Implementation
 │   ├── kyx1/                   # Orange Pi RV 2
 │   │   ├── display_simplefb.c  # Display Driver
+│   │   ├── blobs               # Uboot bins extracted from a build and dts files for device tree
+│   │   ├── drivers             # i2c, pmic_spm8821 and sbi driver code
 │   │   ├── gpio.c              # GPIO Implementation
-│   │   ├── hal_platform_kyx1.c # RISC-V equivalent of what soc/bcm2710/soc_init.c does for the Pi
+│   │   ├── hal_platform_kyx1   # RISC-V equivalent of what soc/bcm2710/soc_init.c does for the Pi
 │   │   ├── kyx1_cpu.h          # CPU Operations
 │   │   ├── kyx1_regs.h         # Register Definitions
 │   │   ├── linker.ld           # Linker Script
 │   │   ├── soc.mk              # KYX1 Configuration
+│   │   ├── soc_init.c          # Platform Initialization
+│   │   ├── timer.c             # Timer Implementation
+│   │   └── uart.c              # UART Driver
+│   ├── jh7110/                 # Milk-V Mars
+│   │   ├── display_simplefb.c  # Display Driver
+│   │   ├── blobs               # dtbs files for device tree
+│   │   ├── gpio.c              # GPIO Implementation
+│   │   ├── hal_platform_jh7110 # RISC-V equivalent of what soc/bcm2710/soc_init.c does for the Pi
+│   │   ├── jh7110_cpu.h        # CPU Operations
+│   │   ├── jh7110_regs.h       # Register Definitions
+│   │   ├── linker.ld           # Linker Script
+│   │   ├── soc.mk              # jh7110 Configuration
+│   │   ├── mmu.S               # Sv39 Page Table Setup for JH7110
 │   │   ├── soc_init.c          # Platform Initialization
 │   │   ├── timer.c             # Timer Implementation
 │   └   └── uart.c              # UART Driver
@@ -87,6 +102,12 @@ tutorial-os/
 │   │   └── boot/
 │   │       ├── config.txt
 │   │       └── BOOT_FILES.md
+│   │
+│   ├── milkv-mars/
+│   │    ├── uEnv.txt
+│   │    ├── board.mk
+│   │    ├── DEPLOY.md
+│   │    └── mkimage.sh          # creates the img with uboot configuration
 │   │
 │   └── orangepi-rv2/
 │       ├── env_k1-x.txt
@@ -122,7 +143,7 @@ tutorial-os/
 │   ├── audio/                  # Core Audio System Drivers
 │   │   ├── audio.c             # PWM Audio Driver Implementation
 │   │   └── audio.h             # PWM Audio Driver Definitions
-│   ├── framebuffer/            # UI Theme System
+│   ├── framebuffer/            # Drawing Definitions
 │   │   ├── framebuffer.c       # 32-bit ARGB8888 Framebuffer Driver
 │   │   └── framebuffer.h       # Framebuffer definitions
 │   ├── sdcard/                 # SD Card Driver
@@ -166,17 +187,22 @@ make LANG=c BOARD=rpi-zero2w-gpi
 # Build for Raspberry Pi CM4
 make LANG=rust BOARD=rpi-cm4-io
 
-# Build for Radxa Rock 2A defaults to C without lang specifier
-make BOARD=radxa-rock2a
-
 # Show build info
 make info
 
 # Clean
 make clean
+
+# Or use docker to build them all via the build commands
+./build.bat    
+./build.sh
+
+# For milk-v mars and orange pi rv 2, there is an additional build step required as they need uboot integration
+docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=milkv-mars image
+docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=orangepi-rv2 image
 ```
 
-## Boot Files (⚠️ Platform-Specific!)
+## Boot Files (Warning! Platform-Specific!)
 
 Each board has different boot requirements. See `board/<name>/boot/BOOT_FILES.md` for details.
 
@@ -189,209 +215,129 @@ Boot partition needs:
 ├── start.elf         # (or start4.elf for CM4)
 ├── fixup.dat         # (or fixup4.dat for CM4)
 ├── config.txt        # PROVIDED in board/xxx/boot/
-└── kernel8.img       # YOUR OS (build output)
+└── kernel8.img       # Tutorial-OS (build output)
 ```
 
 Get firmware from: https://github.com/raspberrypi/firmware/tree/master/boot
-
-### Radxa Rock 2A (Rockchip)
-
-**Completely different!** Uses U-Boot, not VideoCore:
-```
-SD Card:
-├── [sector 64]     idbloader.img    # From Radxa/U-Boot
-├── [sector 16384]  u-boot.itb       # From Radxa/U-Boot
-└── /boot/
-    ├── extlinux/
-    │   └── extlinux.conf            # PROVIDED
-    └── Image                         # YOUR OS (build output)
-```
-
-Note: Kernel is called `Image`, not `kernel8.img`!
-
-## HAL API Overview
-
-### Initialization
-
-```c
-#include "hal/hal.h"
-
-void kernel_main(...) {
-    // Initialize platform (timer, GPIO, board detection)
-    hal_platform_init();
-    
-    // Initialize display
-    framebuffer_t *fb;
-    hal_display_init(&fb);
-    
-    // Your code here...
-}
-```
-
-### Timer Functions
-
-```c
-hal_delay_us(1000);              // Delay 1ms
-hal_delay_ms(100);               // Delay 100ms
-uint64_t ticks = hal_timer_get_ticks();  // Microseconds since boot
-```
-
-### GPIO Functions
-
-```c
-hal_gpio_set_function(18, HAL_GPIO_OUTPUT);
-hal_gpio_set_high(18);
-hal_gpio_set_low(18);
-bool level = hal_gpio_read(26);
-
-// Peripheral configuration
-hal_gpio_configure_dpi();       // DPI display pins
-hal_gpio_configure_audio();     // PWM audio pins
-hal_gpio_configure_sdcard();    // SD card pins
-```
-
-### Platform Information
-
-```c
-const char *board = hal_platform_get_board_name();  // "Raspberry Pi Zero 2W"
-const char *soc = hal_platform_get_soc_name();      // "BCM2710"
-int32_t temp = hal_platform_get_temp_celsius();     // CPU temperature
-uint32_t freq = hal_platform_get_arm_freq();        // CPU frequency
-bool throttled = hal_platform_is_throttled();       // Thermal throttling?
-```
-
-### Display Functions
-
-```c
-framebuffer_t *fb;
-hal_display_init(&fb);                    // Default resolution
-hal_display_init_with_size(800, 600, &fb); // Custom resolution
-
-// After drawing...
-hal_display_present(fb);                  // Swap buffers (with vsync)
-hal_display_present_immediate(fb);        // Swap buffers (no vsync)
-
-hal_display_set_vsync(fb, false);         // Disable vsync
-```
 
 ## Key Design Principles
 
 ### 1. Drawing Code Stays Portable
 
-Your `fb_*()` drawing functions don't change between platforms:
+Your `fb_*()` drawing functions don't change between platforms. The same `main.c` renders identically on ARM64, RISC-V64, and x86_64:
 
 ```c
-// This works on ALL platforms!
+// This works on ALL platforms without a single #ifdef
 fb_clear(fb, 0xFF000000);
-fb_draw_rect(fb, 10, 10, 100, 50, 0xFFFFFFFF);
-fb_draw_string(fb, 20, 20, "Hello World!", 0xFFFFFFFF, 0xFF000000);
+fb_fill_rect(fb, 10, 10, 100, 50, 0xFFFFFFFF);
+fb_draw_string_transparent(fb, 20, 20, "Hello World!", 0xFFFFFFFF);
+ui_draw_panel(fb, panel, &theme, UI_PANEL_ELEVATED);
 ```
 
 ### 2. HAL Abstracts Hardware Differences
 
-| Feature | BCM2710/BCM2711 | RK3528A |
-|---------|-----------------|---------|
-| Timer | MMIO (System Timer) | System registers (Generic Timer) |
-| GPIO Pull | GPPUD sequence / Direct | GRF registers |
-| Display | VideoCore mailbox | VOP2 direct programming |
-| Platform Info | Mailbox queries | Fixed values / device tree |
+Three fundamentally different paths to the same pixel on screen — the HAL makes them identical from `main.c`'s perspective:
+
+| Feature | BCM2710/2711/2712 (ARM64) | JH7110 (RISC-V64) | x86_64 (UEFI) |
+|---------|--------------------------|-------------------|----------------|
+| Boot | VideoCore GPU firmware | U-Boot + OpenSBI | UEFI firmware |
+| Display init | Mailbox property tags | SimpleFB from DTB | GOP protocol |
+| Framebuffer | Allocated by VideoCore | Pre-configured by U-Boot | Allocated by GOP |
+| Cache flush | ARM DSB + cache ops | SiFive L2 Flush64 | x86 CLFLUSH |
+| Timer | MMIO System Timer | RISC-V `rdtime` CSR | HPET / TSC |
+| Platform info | Mailbox queries | Fixed constants + DTB | CPUID + ACPI |
 
 ### 3. Compile-Time Platform Selection
 
-No runtime `if (platform == X)` checks. The build system selects the correct implementation:
+No runtime `if (platform == X)` checks. The build system selects the correct implementation at compile time:
 
 ```makefile
-# board/rpi-zero2w-gpi/board.mk
-SOC := bcm2710
+# board/milkv-mars/board.mk
+SOC := jh7110
 include soc/$(SOC)/soc.mk
 ```
 
-### 4. Error Handling
+### 4. Contract-First HAL Design
+
+HAL interface headers are defined before any implementation exists. Every platform implements the same contract — the drawing code never needs to know which side of the contract it's talking to.
+
+### 5. Error Handling
 
 HAL functions return `hal_error_t`:
 
 ```c
 hal_error_t err = hal_display_init(&fb);
 if (HAL_FAILED(err)) {
-    // Handle error - err contains specific error code
     if (err == HAL_ERROR_DISPLAY_MAILBOX) { ... }
 }
 ```
 
-## Migration from Existing Code
-
-### Before (Direct Hardware Access)
-
-```c
-#include "gpio.h"
-#include "mailbox.h"
-#include "framebuffer.h"
-
-gpio_configure_for_dpi();
-framebuffer_t fb;
-fb_init(&fb);
-fb_present(&fb);
-
-uint32_t temp;
-mailbox_get_temperature(&temp);
-```
-
-### After (HAL)
-
-```c
-#include "hal/hal.h"
-#include "framebuffer.h"  // Still need for drawing functions
-
-hal_platform_init();
-hal_gpio_configure_dpi();
-framebuffer_t *fb;
-hal_display_init(&fb);
-hal_display_present(fb);
-
-int32_t temp = hal_platform_get_temp_celsius();
-```
+---
 
 ## Adding a New Platform
 
 1. **Create SoC directory**: `soc/newsoc/`
 2. **Implement HAL interfaces**:
-   - `timer.c` - Timer/delay functions
-   - `gpio.c` - GPIO control
-   - `soc_init.c` - Platform initialization
-   - `display_*.c` - Display driver
+   - `uart.c` — UART driver (needed for debug output before display works)
+   - `timer.c` — Timer and delay functions
+   - `gpio.c` — GPIO control
+   - `soc_init.c` — Platform initialization
+   - `display_*.c` — Display driver
 3. **Create register header**: `newsoc_regs.h`
 4. **Create build rules**: `soc.mk`
 5. **Create board config**: `board/newboard/board.mk`
+
+**Critical checklist for SimpleFB-based displays** (U-Boot + device tree platforms):
+
+After populating `framebuffer_t` in your `display_init`, always initialize the clip stack before returning:
+
+```c
+fb->clip_depth      = 0;
+fb->clip_stack[0].x = 0;
+fb->clip_stack[0].y = 0;
+fb->clip_stack[0].w = info.width;
+fb->clip_stack[0].h = info.height;
+fb->dirty_count     = 0;
+fb->full_dirty      = false;
+fb->frame_count     = 0;
+fb->initialized     = true;
+```
+
+Skipping this will cause every `fb_fill_rect`, `fb_draw_string`, and widget call to silently draw nothing while `fb_clear` continues to work — making the display pipeline appear healthy when it isn't.
+
+---
 
 ## Platform-Specific Notes
 
 ### BCM2710 (Pi Zero 2W, Pi 3)
 - Peripheral base: `0x3F000000`
 - GPIO pull requires GPPUD + GPPUDCLK sequence
-- 54 GPIO pins
-- VideoCore mailbox for display/temp/clocks
+- Display via VideoCore mailbox property tags
+- DPI output on GPIO 0–27 (ALT2) for GPi Case
 
 ### BCM2711 (Pi 4, CM4)
 - Peripheral base: `0xFE000000`
-- GPIO pull via direct 2-bit registers (simpler!)
-- 58 GPIO pins
-- Same mailbox interface
+- GPIO pull via direct 2-bit registers (simpler than BCM2710)
+- Same mailbox interface as BCM2710
 
-### RK3528A (Rock 2A)
-- Peripheral base: `0x02000000`
-- ARM Generic Timer via system registers
-- 5 GPIO banks × 32 pins = 160 pins
-- IOMUX in GRF for pin functions
-- VOP2 display controller
-- TSADC for temperature
+### BCM2712 (Pi 5, CM5)
+- Peripheral base via RP1 southbridge
+- HDMI routed through RP1 — do NOT configure DPI GPIO pins
+- SET_DEPTH must be sent in a separate mailbox call before full allocation
+- Verify returned pitch == width × 4; pitch == width × 2 means 16bpp allocation failed
 
-## License
+### JH7110 (Milk-V Mars)
+- DRAM base: `0x40000000`; kernel loads at `0x40200000`
+- Framebuffer: `0xFE000000` (confirmed via U-Boot `bdinfo`)
+- Display controller: DC8200 at `0x29400000`
+- L2 Cache flush via SiFive Flush64 at `0x02010200` — `fence` alone is insufficient
+- U-Boot 2021.10 does **not** inject a `simple-framebuffer` DTB node — the hardcoded fallback path is permanent for this U-Boot version, not a temporary workaround
+- CPU: SiFive U74-MC, RV64IMAFDCBX — no Zicbom, no Svpbmt
 
-## Build Boards with Blobs
+### x86_64 (LattePanda IOTA / MU)
+- Boot via UEFI — PE/COFF EFI application at `\EFI\BOOT\BOOTX64.EFI`
+- Framebuffer allocated via GOP (Graphics Output Protocol)
+- No device tree — platform info from CPUID and ACPI tables
 
-Specify the board you want to final compile such as orangepi, radxa rock 2a, le-potato
-```bash
- docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=orangepi-rv2 image
-```
-
+---
 Educational use. See LICENSE file.

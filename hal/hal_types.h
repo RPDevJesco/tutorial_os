@@ -121,13 +121,9 @@ typedef enum {
     HAL_PLATFORM_RPI_5          = 0x0020,   /* bcm2712 */
     HAL_PLATFORM_RPI_CM5        = 0x0021,   /* bcm2712 */
 
-    /* Other ARM64 boards */
-    HAL_PLATFORM_LIBRE_POTATO   = 0x0100,   /* S905X */
-    HAL_PLATFORM_RADXA_ROCK2A   = 0x0200,   /* RK3528A */
-    HAL_PLATFORM_KICKPI_K2B     = 0x0300,   /* H618 */
-
     /* RISC-V boards */
     HAL_PLATFORM_ORANGEPI_RV2   = 0x1000,   /* SpacemiT K1 */
+    HAL_PLATFORM_MILKV_MARS     = 0x1001,   /* StarFive JH7110 */
 
     HAL_PLATFORM_UNKNOWN        = 0xFFFF,
 } hal_platform_id_t;

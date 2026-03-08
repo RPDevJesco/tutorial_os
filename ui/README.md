@@ -3,7 +3,7 @@
 This directory contains a complete UI system built without any external
 libraries. Everything from colors to widgets is implemented from first principles.
 
-## 🎨 Architecture
+## Architecture
 
 ```
 ui/
@@ -17,7 +17,7 @@ ui/
     └── ui_widgets.c
 ```
 
-## 🧱 Design Philosophy
+## Design Philosophy
 
 ### Immediate Mode UI
 Traditional UI frameworks retain objects (buttons, labels, etc.) in memory.
@@ -70,7 +70,7 @@ This makes it easy to:
 - Adapt to different resolutions
 - Maintain visual consistency
 
-## 📁 File Guide
+## File Guide
 
 ### core/ui_types.h
 Fundamental types used everywhere:
@@ -157,7 +157,7 @@ Reusable UI components:
 | `ui_draw_toast()` | Notification popup |
 | `ui_draw_help_bar()` | Button hints |
 
-## 🎯 Usage Example
+## Usage Example
 
 ```c
 void draw_menu(ui_renderer_t *r, const ui_theme_t *theme) {
@@ -185,36 +185,7 @@ void draw_menu(ui_renderer_t *r, const ui_theme_t *theme) {
 }
 ```
 
-## 🔧 Implementing a Platform Backend
-
-To use this UI system, implement the vtables:
-
-```c
-// framebuffer implementation
-static void my_fill_rect(void *ctx, ui_rect_t rect, ui_color_t color) {
-    framebuffer_t *fb = ctx;
-    for (int y = rect.y; y < rect.y + rect.h; y++) {
-        for (int x = rect.x; x < rect.x + rect.w; x++) {
-            fb->pixels[y * fb->width + x] = color;
-        }
-    }
-}
-
-// Build the vtable
-static ui_canvas_vtable_t my_canvas_vt = {
-    .fill_rect = my_fill_rect,
-    .draw_pixel = my_draw_pixel,
-    // ... other functions
-};
-
-// Create canvas
-ui_canvas_t canvas = {
-    .vt = &my_canvas_vt,
-    .ctx = &my_framebuffer
-};
-```
-
-## 📚 Further Reading
+## Further Reading
 
 - "Immediate-Mode Graphical User Interfaces" - Casey Muratori
 - "Dear ImGui" - ocornut (popular immediate mode library)

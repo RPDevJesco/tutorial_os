@@ -7,7 +7,7 @@
 // It's the RISC-V equivalent of boot/arm64/common_init.S.
 //
 // On entry:
-//   - a0 = hart ID (0, from entry.S)
+//   - a0 = hart ID (from entry.S / booti)
 //   - a1 = DTB pointer (from U-Boot, saved/restored by entry.S)
 //   - We're on the boot hart, in S-mode, interrupts disabled
 //   - No stack yet! We can't call functions until sp is set up
@@ -23,6 +23,15 @@
 //   ARM64 also: enables FP/SIMD (cpacr_el1), which RISC-V doesn't need
 //   here because the F/D extensions are always available in S-mode when
 //   the sstatus.FS field is set (we do that in step 3).
+//
+// BUG FIX (2025):
+//   The original code placed the breadcrumb ecall BEFORE saving a0/a1
+//   to callee-saved registers. RISC-V SBI calling convention uses a0
+//   and a1 as argument registers — the ecall overwrites both. This meant
+//   __dtb_ptr was always written as 0, causing fb_init() to fail silently
+//   on every non-BCM platform (JH7110, KyX1).
+//
+//   Fix: mv s0, a0 / mv s1, a1 MUST come before the first ecall.
 //
 // =============================================================================
 
@@ -47,10 +56,27 @@ common_init:
     //
     la      sp, _stack_top
 
-    // Save boot parameters to callee-saved registers again.
-    // We need them to survive the BSS clearing loop and function calls.
+    // -----------------------------------------------------------------
+    // CRITICAL: Save boot parameters to callee-saved registers NOW,
+    // before ANY ecall, function call, or instruction that may clobber
+    // a0/a1. The RISC-V SBI calling convention uses a0-a7 as argument
+    // and return registers — an ecall will overwrite them.
+    //
+    // a0 = hart ID   → s0 (callee-saved, survives all calls)
+    // a1 = DTB ptr   → s1 (callee-saved, survives all calls)
+    //
+    // This MUST be the first thing after setting sp. If a breadcrumb
+    // ecall appears here before these two mv instructions, __dtb_ptr
+    // will be written as 0 and every DTB-dependent driver (SimpleFB,
+    // memory sizing) will silently fail.
+    // -----------------------------------------------------------------
     mv      s0, a0                  // s0 = hart ID
-    mv      s1, a1                  // s1 = DTB pointer
+    mv      s1, a1                  // s1 = DTB pointer  ← MUST be before ecall
+
+    // Now safe to emit breadcrumb — a0/a1 are already saved.
+    li      a7, 1
+    li      a0, '1'
+    ecall
 
     // -----------------------------------------------------------------
     // Step 2: Zero the BSS section
@@ -78,6 +104,9 @@ common_init:
     bltu    t0, t1, .Lbss_clear     // while (t0 < t1)
 
 .Lbss_done:
+    li      a7, 1
+    li      a0, '2'
+    ecall
 
     // -----------------------------------------------------------------
     // Step 3: Enable floating-point and install trap vector
@@ -113,23 +142,35 @@ common_init:
     la      t0, trap_vector
     csrw    stvec, t0               // All traps → trap_vector
 
+    li      a7, 1
+    li      a0, '3'
+    ecall
+
     // -----------------------------------------------------------------
     // Step 4: Store boot parameters for C code
     // -----------------------------------------------------------------
-    // Save hart ID and DTB pointer to global variables. C code will
-    // need these — especially the DTB pointer, which contains the
-    // SimpleFB framebuffer info that U-Boot injected.
+    // Write the callee-saved copies of hart ID and DTB pointer to their
+    // global variables. C code reads these throughout the kernel's
+    // lifetime — most critically, display_simplefb.c reads __dtb_ptr
+    // to locate the U-Boot-injected framebuffer node.
     //
-    // The DTB tells us:
-    //   - Framebuffer physical address, width, height, stride, format
-    //   - Memory regions (how much RAM we have)
-    //   - Peripheral descriptions (for future driver use)
+    // We store s1 (DTB) and s0 (hart ID), NOT a1/a0. The originals in
+    // a0/a1 were overwritten by the breadcrumb ecalls above. s0/s1 are
+    // callee-saved and have held the correct values since Step 1.
+    //
+    // The globals live in .data (not .bss) so that BSS zeroing in Step 2
+    // cannot overwrite them — belt and suspenders, since we write them
+    // after zeroing anyway.
     //
     la      t0, __dtb_ptr
-    sd      s1, 0(t0)               // __dtb_ptr = DTB address
+    sd      s1, 0(t0)               // __dtb_ptr = DTB address (from s1)
 
     la      t0, __boot_hart_id
-    sd      s0, 0(t0)               // __boot_hart_id = 0
+    sd      s0, 0(t0)               // __boot_hart_id = hart ID (from s0)
+
+    li      a7, 1
+    li      a0, '4'
+    ecall
 
     // -----------------------------------------------------------------
     // Step 5: Jump to C code
@@ -145,9 +186,9 @@ common_init:
     // The DTB also has memory info, but parsing FDT in assembly would
     // be unnecessarily complex — the HAL handles details in C.
     //
-    mv      a0, s1                  // a0 = DTB pointer
-    li      a1, 0x0                 // a1 = RAM base (0x0 on Ky X1)
-    li      a2, 0x100000000         // a2 = RAM size (4 GB)
+    mv      a0, s1                  // a0 = DTB pointer (from s1, not a1)
+    li      a1, RAM_BASE
+    li      a2, RAM_SIZE
     call    kernel_main
 
     // -----------------------------------------------------------------
@@ -185,8 +226,8 @@ common_init:
 __dtb_ptr:
     .quad 0
 
-// Boot hart ID — which core we're running on (usually 0).
-// Useful for SMP awareness and diagnostic output.
+// Boot hart ID — which core we're running on (usually 1 on JH7110,
+// 0 on KyX1 — controlled by BOOT_HART_ID in soc.mk).
 .balign 8
 .global __boot_hart_id
 __boot_hart_id:

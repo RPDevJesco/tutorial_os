@@ -9,7 +9,6 @@
  *   - Raspberry Pi Zero 2W  (BCM2710, ARM64, DPI/HDMI)
  *   - Raspberry Pi CM4       (BCM2711, ARM64, HDMI)
  *   - Raspberry Pi CM5       (BCM2712, ARM64, HDMI)
- *   - Radxa Rock 2A          (RK3528A, ARM64, HDMI)
  *   - Orange Pi RV2          (Ky X1,   RISC-V64, HDMI)
  *
  * PORTABILITY:
@@ -184,12 +183,11 @@ static const char *get_cpu_core_name(hal_platform_id_t id)
         case HAL_PLATFORM_RPI_CM5:
             return "Cortex-A76";
 
-        case HAL_PLATFORM_RADXA_ROCK2A:
-            return "Cortex-A53";
-
         case HAL_PLATFORM_ORANGEPI_RV2:
             return "X60 (RV64GC)";
 
+		case HAL_PLATFORM_MILKV_MARS:
+			return "Starfire JH7110";
         default:
             return "CPU";
     }
@@ -214,8 +212,6 @@ static const char *get_arch_isa(hal_platform_id_t id)
         case HAL_PLATFORM_RPI_CM4:
         case HAL_PLATFORM_RPI_5:
         case HAL_PLATFORM_RPI_CM5:
-        case HAL_PLATFORM_RADXA_ROCK2A:
-            return "ARMv8-A";
 
         case HAL_PLATFORM_ORANGEPI_RV2:
             return "RV64GCV";
@@ -234,9 +230,6 @@ static const char *get_display_interface(hal_platform_id_t id, uint32_t width)
     if ((id == HAL_PLATFORM_RPI_ZERO2W) && (width <= 640)) {
         return "DPI RGB666 Parallel";
     }
-    if (id == HAL_PLATFORM_RADXA_ROCK2A) {
-        return "HDMI (VOP2)";
-    }
     if (id == HAL_PLATFORM_ORANGEPI_RV2) {
         return "HDMI (SimpleFB)";
     }
@@ -250,12 +243,13 @@ static const char *get_display_interface(hal_platform_id_t id, uint32_t width)
 static const char *get_boot_stage(hal_platform_id_t id, int stage)
 {
     switch (id) {
-        case HAL_PLATFORM_RADXA_ROCK2A:
+        case HAL_PLATFORM_MILKV_MARS:
             switch (stage) {
-                case 0: return "BootROM";
-                case 1: return "TPL";
-                case 2: return "U-Boot";
-                case 3: return "Image";
+                case 0: return "BROM";
+                case 1: return "FSBL";
+                case 2: return "OpenSBI";
+                case 3: return "U-Boot";
+                case 4: return "Image";
                 default: return NULL;
             }
         case HAL_PLATFORM_ORANGEPI_RV2:

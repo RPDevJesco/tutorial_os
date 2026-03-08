@@ -47,7 +47,9 @@
 
 #define FB_MAX_DIRTY_RECTS  32
 #define FB_MAX_CLIP_DEPTH   8
+#ifndef FB_BUFFER_COUNT
 #define FB_BUFFER_COUNT     2
+#endif
 
 /* GameBoy display */
 #define GB_WIDTH            160
@@ -162,6 +164,11 @@ typedef struct {
     const uint32_t *data;
 } fb_bitmap_t;
 
+typedef enum {
+ FB_FORMAT_ARGB8888 = 0,  /* default — most platforms */
+ FB_FORMAT_ABGR8888 = 1,  /* JH7110 DC8200 */
+} fb_pixel_format_t;
+
 /*
  * Main framebuffer structure
  *
@@ -189,6 +196,7 @@ typedef struct framebuffer {
     uint64_t frame_count;
     bool vsync_enabled;
     bool initialized;
+    fb_pixel_format_t pixel_format;
 } framebuffer_t;
 
 

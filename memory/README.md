@@ -3,7 +3,7 @@
 In bare-metal programming, there's no `malloc()` or `free()` provided for you.
 This directory contains a complete memory allocator built from scratch.
 
-## 🧠 Why Write an Allocator?
+## Why Write an Allocator?
 
 When you call `malloc(100)` in a normal program:
 1. Your program asks the C library
@@ -17,7 +17,7 @@ In bare-metal, **there is no OS**. We must:
 3. Handle requests efficiently
 4. Avoid fragmentation
 
-## 📁 Files
+## Files
 
 ### allocator.h
 - Public API definitions
@@ -29,12 +29,12 @@ In bare-metal, **there is no OS**. We must:
 - O(1) allocation and deallocation
 - Automatic coalescing of freed blocks
 
-## 🏗️ How It Works
+## How It Works
 
 ### Memory Layout
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         HEAP                                 │
+│                         HEAP                                │
 │  ┌─────────┬─────────┬─────────┬─────────┬───────────────┐  │
 │  │ Block 1 │ Block 2 │ Block 3 │  FREE   │   Block 4     │  │
 │  │  (used) │  (used) │ (FREE)  │         │    (used)     │  │
@@ -90,7 +90,7 @@ Bitmap: 0b00000111  (classes 0, 1, 2 have free blocks)
 4. Write footer (for backwards coalescing)
 5. Insert into appropriate size class
 
-## 📊 Complexity
+## Complexity
 
 | Operation | Time Complexity |
 |-----------|-----------------|
@@ -100,7 +100,7 @@ Bitmap: 0b00000111  (classes 0, 1, 2 have free blocks)
 
 The bitmap trick makes finding a suitable block O(1) instead of O(n).
 
-## 🔧 Usage
+## Usage
 
 ```c
 #include "allocator.h"
@@ -119,7 +119,7 @@ void kernel_main(void) {
 }
 ```
 
-## ⚠️ Important Notes
+## ⚠Important Notes
 
 ### Thread Safety
 This allocator is **NOT** thread-safe. In a multi-core system, you'd need
@@ -130,13 +130,12 @@ Even with coalescing, external fragmentation can occur:
 ```
 [used][free][used][free][used][free]  ← Can't allocate large block!
 ```
-This is a fundamental challenge of any allocator.
 
 ### No `realloc` Optimization
 Our `realloc` always allocates new memory and copies. A production
 allocator might try to grow the block in place.
 
-## 📚 Further Reading
+## Further Reading
 
 - "Two-Level Segregated Fit (TLSF)" - M. Masmano et al.
 - "dlmalloc" - Doug Lea's classic allocator

@@ -595,6 +595,14 @@ static inline size_t strlen_local(const char *s)
     return len;
 }
 
+static inline uint32_t fb_pack_color(const framebuffer_t *fb, uint32_t argb)
+{
+    if (fb->pixel_format == FB_FORMAT_ABGR8888)
+        return (argb & 0xFF00FF00) |
+               ((argb & 0x00FF0000) >> 16) |
+               ((argb & 0x000000FF) << 16);
+    return argb;
+}
 
 /* =============================================================================
  * MATH HELPERS

@@ -147,7 +147,8 @@ _real_start:
     // Note: We can't assume hart 0 is always the boot hart on every
     // RISC-V platform, but on the Ky X1, U-Boot boots on hart 0.
     //
-    bnez    a0, .Lpark_hart         // if (hart_id != 0) goto sleep
+    li      t0, BOOT_HART_ID
+    bne     a0, t0, .Lpark_hart
 
     // -----------------------------------------------------------------
     // Step 2: Save boot parameters to callee-saved registers
