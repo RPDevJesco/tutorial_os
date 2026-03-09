@@ -40,30 +40,6 @@
  *   a natural candidate for a shared common/ module. We keep it
  *   duplicated here intentionally to keep each SoC directory self-contained
  *   and minimize surprise for readers studying one platform at a time.
- *
- * BUG FIXES (2025):
- * -----------------
- * FIX 1 — buffers[] NULL pointer crash (scause=7, stval=0x0):
- *   The original code set fb->addr correctly but left fb->buffers[0/1]
- *   as zero. fb_present() in framebuffer.c does:
- *       fb->addr = fb->buffers[fb->back_buffer];
- *   With buffers[] = {NULL, NULL}, fb->addr becomes NULL after the first
- *   fb_present() call. The next fb_clear() writes to address 0x0 → fault.
- *   Fix: set both buffers[] slots to the physical framebuffer address.
- *   SimpleFB has no double buffering — both slots point to the same memory.
- *
- * FIX 2 — wrong fallback address (writes go nowhere):
- *   The original fallback used 0xFB700000. Confirmed via U-Boot `bdinfo`:
- *   FB base is 0xFE000000. Writes to the wrong address succeed (no fault)
- *   but are invisible — the display controller never sees them.
- *
- * FIX 3 — stride mismatch (partial clear / row artifacts):
- *   This U-Boot build does not inject a simple-framebuffer node into the
- *   DTB, so the fallback path is always taken and stride would be computed
- *   as width*4=7680. If the DC8200 is scanning at a different stride
- *   (e.g. 8192 for 4K alignment), every row after the first is offset,
- *   producing diagonal artifacts. We probe the actual stride from the
- *   DC8200 primary layer stride register at runtime instead.
  */
 
 #include "jh7110_regs.h"
@@ -98,8 +74,6 @@ void jh7110_l2_flush_range(uintptr_t phys_addr, size_t size);
  *   0x0400 — DC_FRAMEBUFFER_CONFIG
  *   0x1400 — DC_DISPLAY_UNIT_0_FRAMEBUFFER_ADDRESS (primary layer base)
  *   0x1430 — DC_DISPLAY_UNIT_0_FRAMEBUFFER_STRIDE  (primary layer stride)
- *
- * Verify at U-Boot prompt: md.l 0x29401430 1
  */
 #define DC8200_BASE         0x29400000UL
 #define DC8200_STRIDE_REG   0x1430         /* Primary layer stride, bytes (could also be 0x1408 ) */
@@ -315,9 +289,6 @@ static bool parse_simplefb_from_dtb(const void *dtb, simplefb_info_t *info)
  * stride) and <= width*8 (implausibly wide). If it falls outside this
  * range the register offset may be wrong for this U-Boot version and we
  * fall back to width*(bpp/8).
- *
- * Verify manually at U-Boot prompt:
- *   StarFive # md.l 0x29401430 1
  */
 static uint32_t probe_dc8200_stride(uint32_t width, uint32_t bpp)
 {
