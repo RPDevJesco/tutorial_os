@@ -322,7 +322,7 @@ hal_error_t hal_platform_get_throttle_status(uint32_t *flags)
     /*
      * JH7110 has no VideoCore-style throttle reporting.
      * The AXP15060 handles thermal shutdown independently.
-     * Report no throttle until we implement PMIC interrupt monitoring.
+     * Report no throttle until drivers/pmic is used.
      */
     *flags = 0;
     return HAL_SUCCESS;
@@ -497,8 +497,7 @@ hal_error_t hal_platform_get_power(hal_device_id_t device, bool *on)
  * orders all memory operations and is sufficient for the framebuffer case.
  *
  * Contrast with the Ky X1 (SpacemiT X60, RV64GCV + Zicbom): that platform
- * compiles cache.S with actual cbo.clean loops. Same HAL symbol,
- * architecturally different implementation — the HAL doing its job.
+ * compiles cache.S with actual cbo.clean loops.
  */
 
 void clean_dcache_range(uintptr_t start, size_t size)
