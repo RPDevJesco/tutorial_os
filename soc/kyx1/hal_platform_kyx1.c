@@ -628,11 +628,8 @@ void hal_debug_printf(const char *fmt, ...)
  * DISPLAY INITIALIZATION (HAL bridge)
  * =============================================================================
  *
- * Bridges the HAL display interface to our kyx1_display_init().
+ * Bridges the HAL display interface to kyx1_display_init().
  * main.c calls fb_init() which routes here.
- *
- * NOTE: Argument order was fixed in a previous session — fb first, dtb second,
- * matching the kyx1_display_init(framebuffer_t *fb, const void *dtb) signature.
  */
 
 #include "framebuffer.h"

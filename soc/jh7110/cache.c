@@ -1,4 +1,3 @@
-/* soc/jh7110/cache.c */
 #include <stdint.h>
 #include <stddef.h>
 
