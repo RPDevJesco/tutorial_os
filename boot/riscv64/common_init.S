@@ -15,14 +15,20 @@
 // Responsibilities:
 //   1. Set up the stack pointer
 //   2. Zero the BSS section
-//   3. Install the trap vector (stvec)
+//   3. Install the trap vector (stvec) and enable FP
 //   4. Store boot parameters to global variables
 //   5. Call kernel_main()
 //
-// ARM64 common_init.S comparison:
-//   ARM64 also: enables FP/SIMD (cpacr_el1), which RISC-V doesn't need
-//   here because the F/D extensions are always available in S-mode when
-//   the sstatus.FS field is set (we do that in step 3).
+// CHANGE (kernel_main signature):
+//   kernel_main no longer receives dtb_ptr/ram_base/ram_size as parameters.
+//   Instead, ALL boot parameters are stored to canonical globals here in
+//   Step 4, before the call. kernel_main reads from those globals when
+//   needed. This makes kernel_main's signature uniform across all
+//   architectures — void kernel_main(framebuffer_t *fb).
+//
+//   On ARM64 (BCM), detected_ram_base/detected_ram_size are aliased as
+//   __ram_base/__ram_size in boot_soc.S. On RISC-V, we store the
+//   compile-time constants directly to __ram_base/__ram_size here.
 //
 // BUG FIX (2025):
 //   The original code placed the breadcrumb ecall BEFORE saving a0/a1
@@ -62,60 +68,44 @@ common_init:
     // a0/a1. The RISC-V SBI calling convention uses a0-a7 as argument
     // and return registers — an ecall will overwrite them.
     //
-    // a0 = hart ID   → s0 (callee-saved, survives all calls)
-    // a1 = DTB ptr   → s1 (callee-saved, survives all calls)
+    // s0 = hart ID  (from a0, callee-saved, survives ecalls)
+    // s1 = DTB ptr  (from a1, callee-saved, survives ecalls)
     //
-    // This MUST be the first thing after setting sp. If a breadcrumb
-    // ecall appears here before these two mv instructions, __dtb_ptr
-    // will be written as 0 and every DTB-dependent driver (SimpleFB,
-    // memory sizing) will silently fail.
-    // -----------------------------------------------------------------
-    mv      s0, a0                  // s0 = hart ID
-    mv      s1, a1                  // s1 = DTB pointer  ← MUST be before ecall
-
-    // Now safe to emit breadcrumb — a0/a1 are already saved.
-    li      a7, 1
-    li      a0, '1'
-    ecall
+    mv      s0, a0                  // Save hart ID before any ecall
+    mv      s1, a1                  // Save DTB pointer before any ecall
 
     // -----------------------------------------------------------------
     // Step 2: Zero the BSS section
     // -----------------------------------------------------------------
-    // BSS (Block Started by Symbol) contains uninitialized global and
-    // static variables. The C standard guarantees these are zero, but
-    // the hardware doesn't do it — our kernel image only has .text,
-    // .rodata, and .data. BSS is just a size marker in the ELF.
+    // BSS holds uninitialized global variables. The C standard requires
+    // them to be zero at program start. On hosted systems the OS does
+    // this; in bare-metal we do it ourselves.
     //
-    // We fill it with zeros using doubleword (8-byte) stores for
-    // efficiency on 64-bit RISC-V. The linker script guarantees both
-    // __bss_start and __bss_end are 8-byte aligned.
+    // We use a simple byte-at-a-time loop for clarity. A production
+    // kernel might use 8-byte stores (SD) for speed, but at boot time
+    // BSS is small enough that simplicity wins.
     //
-    // ARM64 equivalent uses `stp xzr, xzr, [x0], #16` to zero 16
-    // bytes per iteration. We do 8 bytes per iteration — simpler and
-    // RISC-V doesn't have a store-pair instruction anyway.
-    //
-    la      t0, __bss_start         // t0 = current pointer
-    la      t1, __bss_end           // t1 = end boundary
-    bgeu    t0, t1, .Lbss_done      // Skip if BSS is empty
-
-.Lbss_clear:
-    sd      zero, 0(t0)             // *t0 = 0  (store doubleword)
-    addi    t0, t0, 8               // t0 += 8
-    bltu    t0, t1, .Lbss_clear     // while (t0 < t1)
-
+    la      t0, __bss_start
+    la      t1, __bss_end
+.Lclear_bss:
+    bge     t0, t1, .Lbss_done
+    sb      zero, 0(t0)
+    addi    t0, t0, 1
+    j       .Lclear_bss
 .Lbss_done:
+
+    // Breadcrumb: BSS cleared (SBI putchar, visible on UART before
+    // the UART driver is initialized). '1'=entry, '2'=bss done.
     li      a7, 1
     li      a0, '2'
     ecall
 
     // -----------------------------------------------------------------
-    // Step 3: Enable floating-point and install trap vector
+    // Step 3: Enable FP and install trap vector
     // -----------------------------------------------------------------
-    // RISC-V floating-point state is controlled by the FS field in the
-    // sstatus CSR (bits 14:13). By default it may be "Off" (0), which
-    // causes an illegal-instruction trap on any FP operation. We set it
-    // to "Initial" (1) to enable FP without triggering context-save
-    // overhead.
+    // RISC-V sstatus.FS controls floating-point availability.
+    // By default it may be "Off" (0), which causes an illegal-instruction
+    // trap on any FP operation. We set it to "Initial" (1).
     //
     // ARM64 equivalent: writing to cpacr_el1 to enable FP/SIMD.
     //
@@ -135,9 +125,7 @@ common_init:
     // handler entry point, which then dispatches based on scause.
     //
     // ARM64 equivalent: writing to vbar_el1 to set the exception
-    // vector base address. ARM64 uses a table of 16 entries × 0x80
-    // bytes each; RISC-V uses either direct (one handler) or vectored
-    // (one entry per interrupt cause) mode.
+    // vector base address.
     //
     la      t0, trap_vector
     csrw    stvec, t0               // All traps → trap_vector
@@ -147,48 +135,68 @@ common_init:
     ecall
 
     // -----------------------------------------------------------------
-    // Step 4: Store boot parameters for C code
+    // Step 4: Store boot parameters to globals
     // -----------------------------------------------------------------
-    // Write the callee-saved copies of hart ID and DTB pointer to their
-    // global variables. C code reads these throughout the kernel's
-    // lifetime — most critically, display_simplefb.c reads __dtb_ptr
-    // to locate the U-Boot-injected framebuffer node.
+    // Write ALL boot parameters to their canonical global variables.
+    // kernel_main reads from these globals — it no longer receives
+    // any of this as function parameters.
     //
-    // We store s1 (DTB) and s0 (hart ID), NOT a1/a0. The originals in
-    // a0/a1 were overwritten by the breadcrumb ecalls above. s0/s1 are
-    // callee-saved and have held the correct values since Step 1.
+    // WHY GLOBALS INSTEAD OF PARAMETERS:
+    //   On ARM64, RAM info comes from the VideoCore mailbox (runtime).
+    //   On RISC-V, RAM info comes from compile-time SOC defines.
+    //   On x86_64, RAM info comes from the UEFI memory map (runtime).
+    //   Passing these as kernel_main parameters would force a different
+    //   signature per architecture. Globals are the clean solution.
     //
-    // The globals live in .data (not .bss) so that BSS zeroing in Step 2
-    // cannot overwrite them — belt and suspenders, since we write them
-    // after zeroing anyway.
+    // NOTE: We store s0/s1 here, NOT a0/a1. The ecalls above
+    // overwrote a0 and a1 — s0/s1 have held the correct values
+    // since the very start of Step 1.
     //
+
+    // __dtb_ptr: address of U-Boot's flattened device tree.
+    // display_simplefb.c reads this to find the GOP/SimpleFB node.
     la      t0, __dtb_ptr
     sd      s1, 0(t0)               // __dtb_ptr = DTB address (from s1)
 
+    // __boot_hart_id: which hart (core) we're running on.
     la      t0, __boot_hart_id
     sd      s0, 0(t0)               // __boot_hart_id = hart ID (from s0)
+
+    // __ram_base: physical base address of DRAM, from SOC defines.
+    // On RISC-V these are compile-time constants — not runtime queries
+    // like the BCM mailbox. We write them to globals so kernel_main
+    // can read them the same way regardless of architecture.
+    la      t0, __ram_base
+    li      t1, RAM_BASE
+    sd      t1, 0(t0)               // __ram_base = RAM_BASE (e.g. 0x40000000)
+
+    // __ram_size: total DRAM size available to the kernel.
+    la      t0, __ram_size
+    li      t1, RAM_SIZE
+    sd      t1, 0(t0)               // __ram_size = RAM_SIZE (e.g. 0x40000000)
 
     li      a7, 1
     li      a0, '4'
     ecall
 
     // -----------------------------------------------------------------
-    // Step 5: Jump to C code
+    // Step 5: Jump to kernel_main
     // -----------------------------------------------------------------
-    // Pass arguments matching kernel_main(dtb_ptr, ram_base, ram_size).
-    // This matches the ARM64 convention so the SAME main.c works on
-    // both architectures without #ifdefs.
+    // kernel_main signature: void kernel_main(framebuffer_t *fb)
     //
-    //   void kernel_main(uintptr_t dtb_ptr, uintptr_t ram_base, uintptr_t ram_size);
+    // We pass NULL (zero) for fb — kernel_main will call fb_init()
+    // which routes to the platform-specific display driver. On ARM64
+    // and RISC-V, fb_init() does the real work (mailbox/DTB).
     //
-    // On ARM64, entry.S queries RAM via the VideoCore mailbox.
-    // On RISC-V, we pass hardcoded values from the platform spec.
-    // The DTB also has memory info, but parsing FDT in assembly would
-    // be unnecessarily complex — the HAL handles details in C.
+    // On x86_64, soc_init.c::efi_main() passes a real fb* because the
+    // GOP framebuffer must be captured before ExitBootServices(). That
+    // is the one architectural difference that is genuinely unavoidable
+    // and is handled in soc_init.c, not here.
     //
-    mv      a0, s1                  // a0 = DTB pointer (from s1, not a1)
-    li      a1, RAM_BASE
-    li      a2, RAM_SIZE
+    // ALL boot data (DTB, RAM base, RAM size) is now in globals.
+    // The parameter list is clean and platform-uniform.
+    //
+    mv      a0, zero                // fb = NULL — kernel_main calls fb_init()
     call    kernel_main
 
     // -----------------------------------------------------------------
@@ -197,7 +205,7 @@ common_init:
     // If we get here, something went wrong. Print '!' as a distress
     // signal and halt. On ARM64, the equivalent is `wfe; b halt`.
     //
-    li      a7, 1                   // SBI_PUTCHAR
+    li      a7, 1
     li      a0, '!'                 // '!' = kernel returned (bad!)
     ecall
 
@@ -205,22 +213,31 @@ common_init:
     wfi
     j       .Lhalt
 
+
 // =============================================================================
 // Data Section — Boot Parameters
 // =============================================================================
-// These globals are written during init and read by C code throughout the
-// kernel's lifetime. They live in .data (not .bss) because .bss gets zeroed
-// by this very code — we'd overwrite them if they were in .bss!
+// These globals are written during init (Step 4) and read by C code
+// throughout the kernel's lifetime. They live in .data (not .bss) because
+// .bss gets zeroed by this very code — writing them after zeroing is safe,
+// but .data makes the dependency explicit.
 //
-// Actually, we write them AFTER zeroing BSS, so .bss would be fine too.
-// But keeping them in .data makes the dependency explicit and safe against
-// future reordering. Belt and suspenders.
+// NAMING CONVENTION:
+//   __dtb_ptr        — used by display_simplefb.c (RISC-V/ARM64 only)
+//   __boot_hart_id   — used by SMP code if ever added
+//   __ram_base       — used by kernel_main heap init
+//   __ram_size       — used by kernel_main heap init
+//
+// On ARM64 (BCM), __ram_base and __ram_size are defined as aliases in
+// boot_soc.S alongside detected_ram_base/detected_ram_size. The same
+// names resolve to the same storage. C code uses only the __ prefixed
+// names for portability.
 
 .section ".data"
 
 // DTB pointer — address of the flattened device tree passed by U-Boot.
 // Contains SimpleFB framebuffer info, memory regions, and peripheral
-// descriptions. This is the single most important value from boot.
+// descriptions. Most important single value from boot.
 .balign 8
 .global __dtb_ptr
 __dtb_ptr:
@@ -231,4 +248,20 @@ __dtb_ptr:
 .balign 8
 .global __boot_hart_id
 __boot_hart_id:
+    .quad 0
+
+// RAM base address — physical start of DRAM accessible to the kernel.
+// On RISC-V: populated from RAM_BASE compile-time constant (soc.mk).
+// On ARM64: aliased from detected_ram_base in boot_soc.S (mailbox result).
+.balign 8
+.global __ram_base
+__ram_base:
+    .quad 0
+
+// RAM size — total bytes of DRAM available to the kernel.
+// On RISC-V: populated from RAM_SIZE compile-time constant (soc.mk).
+// On ARM64: aliased from detected_ram_size in boot_soc.S (mailbox result).
+.balign 8
+.global __ram_size
+__ram_size:
     .quad 0

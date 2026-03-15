@@ -259,6 +259,7 @@ typedef struct {
     ui_shadow_t shadow;
     uint32_t line_height;       /* Normal text line height */
     uint32_t line_height_sm;    /* Small text line height */
+    uint32_t font_scale;        /* scaling */
 } ui_theme_t;
 
 
@@ -295,6 +296,15 @@ static inline ui_theme_t ui_theme_for_width(uint32_t width, ui_color_palette_t p
         theme.line_height_sm = 12;
     }
 
+    // Font scale: text pixel size multiplier for high-DPI screens.
+    // Derived the same way as layout_t::font_scale in kernel/main.c so
+    // widget text and panel text scale identically.
+    //   width ≤ 1279 → font_scale = 1  (8px chars, unchanged)
+    //   width ≤ 2559 → font_scale = 2  (16px chars)
+    //   width ≥ 2560 → font_scale = 3  (24px chars, 4K)
+    theme.font_scale = width / 1280;
+    if (theme.font_scale < 1) theme.font_scale = 1;
+    if (theme.font_scale > 3) theme.font_scale = 3;
     return theme;
 }
 

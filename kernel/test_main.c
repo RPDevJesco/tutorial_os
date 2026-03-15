@@ -313,11 +313,9 @@ static layout_t compute_layout(uint32_t fb_w, uint32_t fb_h)
 
     L.sx = fb_w / 640;
     if (L.sx < 1) L.sx = 1;
-    if (L.sx > 4) L.sx = 4;
 
-    L.sy = fb_h / 480;
+    L.sy = fb_h / 360;
     if (L.sy < 1) L.sy = 1;
-    if (L.sy > 4) L.sy = 4;
 
     L.margin    = 10 * L.sx;
     L.col_gap   = 10 * L.sx;

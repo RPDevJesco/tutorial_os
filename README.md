@@ -4,15 +4,15 @@ A multi-platform bare-metal operating system designed to teach low-level systems
 
 ## Supported Platforms
 
-| Board                           | SoC             | Architecture | Implementation Status | Build Status    |
-|---------------------------------|-----------------|--------------|-----------------------|-----------------|
-| Raspberry Pi Zero 2W + GPi Case | BCM2710         | ARM          | ✅ Complete           | ✅ Passing      |
-| Raspberry Pi 4B / CM4           | BCM2711         | ARM          | ✅ Complete           | ✅ Passing      |
-| Raspberry Pi 5 / CM5            | BCM2712         | ARM          | ✅ Complete           | ✅ Passing      |
-| Orange Pi RV 2                  | KYX1            | RISC-V       | ✅ Complete           | ✅ Passing      |
-| LattePanda Iota                 | N150            | x86_64       | ❌ InComplete         | ❌ Failing      |
-| LattePanda MU Compute           | N100            | x86_64       | ❌ InComplete         | ❌ Failing      |
-| Milk-V Mars                     | Starfive JH7110 | RISC-V       | ✅ Complete           | ✅ Passing      |
+| Board                           | SoC             | Architecture | Implementation Status | Build Status   |
+|---------------------------------|-----------------|--------------|-----------------------|----------------|
+| Raspberry Pi Zero 2W + GPi Case | BCM2710         | ARM          | ✅ Complete            | ✅ Passing     |
+| Raspberry Pi 4B / CM4           | BCM2711         | ARM          | ✅ Complete            | ✅ Passing     |
+| Raspberry Pi 5 / CM5            | BCM2712         | ARM          | ✅ Complete            | ✅ Passing     |
+| Orange Pi RV 2                  | KYX1            | RISC-V       | ✅ Complete            | ✅ Passing     |
+| LattePanda Iota                 | N150            | x86_64       | ❌ Incomplete          | ❌ Failing     |
+| LattePanda MU Compute           | N100            | x86_64       | ✅ Complete            | ✅ Passing     |
+| Milk-V Mars                     | Starfive JH7110 | RISC-V       | ✅ Complete            | ✅ Passing     |
 
 https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
 
@@ -76,6 +76,15 @@ tutorial-os/
 │   │   ├── soc_init.c          # Platform Initialization
 │   │   ├── timer.c             # Timer Implementation
 │   │   └── uart.c              # UART Driver
+│   ├── lattepanda_n100/        # N100 CPU for LattePanda MU
+│   │   ├── display_gop.c       # Display Driver
+│   │   ├── gpio.c              # GPIO Implementation
+│   │   ├── hal_platform_n100   # x86_64 equivalent of what soc/bcm2710/soc_init.c does for the Pi
+│   │   ├── linker.ld           # Linker Script
+│   │   ├── soc.mk              # N100 Configuration
+│   │   ├── soc_init.c          # Platform Initialization
+│   │   ├── timer.c             # Timer Implementation
+│   │   └── uart_8250.c         # UART Driver
 │   ├── jh7110/                 # Milk-V Mars
 │   │   ├── display_simplefb.c  # Display Driver
 │   │   ├── blobs               # dtbs files for device tree
@@ -108,6 +117,11 @@ tutorial-os/
 │   │    ├── board.mk
 │   │    ├── DEPLOY.md
 │   │    └── mkimage.sh          # creates the img with uboot configuration
+|   |
+│   ├── lattepanda-mu/
+│   │    ├── board.mk
+│   │    ├── mkimage.py          # creates the img with PE/COFF EFI application configuration
+│   │    └── mkimage.sh          # .sh wrapper for mkimage.py
 │   │
 │   └── orangepi-rv2/
 │       ├── env_k1-x.txt
@@ -127,11 +141,7 @@ tutorial-os/
 │   │   ├── common_init.S       # Common Post-SoC Initialization
 │   │   ├── entry.S             # Entry Point
 │   │   └── vectors.S           # Exception Vector Table
-│   ├── x86_64/
-│   │   ├── cache.S             # Cache Maintenance Functions
-│   │   ├── common_init.S       # Common Post-SoC Initialization
-│   │   ├── entry.S             # Entry Point
-│   └   └── vectors.S           # Exception Vector Table
+│   └── x86_64/                 # Empty as we don't need it with gnu-efi
 │
 ├── common/                     # Shared (less than) minimal libc and mmio
 │   ├── mmio.h                  # Memory-Mapped I/O and System Primitives
@@ -140,18 +150,9 @@ tutorial-os/
 │   └── types.h                 # Type Definitions
 │
 ├── drivers/                    # Portable drivers
-│   ├── audio/                  # Core Audio System Drivers
-│   │   ├── audio.c             # PWM Audio Driver Implementation
-│   │   └── audio.h             # PWM Audio Driver Definitions
 │   ├── framebuffer/            # Drawing Definitions
-│   │   ├── framebuffer.c       # 32-bit ARGB8888 Framebuffer Driver
-│   │   └── framebuffer.h       # Framebuffer definitions
-│   ├── sdcard/                 # SD Card Driver
-│   │   ├── sdhost.h            # SD Card Driver via SDHOST Controller
-│   │   └── sdhost.c            # SD Card Driver Implementation
-│   ├── usb/                    # USB Host Driver
-│   │   ├── usb_host.h          # DWC2 USB Host Controller Driver Definition
-│   └   └── usb_host.c          # DWC2 USB Host Controller Implementations
+│   │   ├── framebuffer.h       # 32-bit ARGB8888 Framebuffer Driver
+│   └   └── framebuffer.c       # Framebuffer definitions
 │
 ├── kernel/                     # Kernel code
 │   └── main.c                  # Main application entry point
@@ -200,6 +201,8 @@ make clean
 # For milk-v mars and orange pi rv 2, there is an additional build step required as they need uboot integration
 docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=milkv-mars image
 docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=orangepi-rv2 image
+docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=lattepanda-mu image
+docker run --rm -v ${PWD}:/src -w /src --entrypoint make tutorial-os-builder BOARD=lattepanda-iota image
 ```
 
 ## Boot Files (Warning! Platform-Specific!)

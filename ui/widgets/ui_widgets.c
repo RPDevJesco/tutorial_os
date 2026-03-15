@@ -28,6 +28,29 @@
  * =============================================================================
  */
 
+/* =============================================================================
+ * FONT-SCALE HELPERS  (add near top of ui_widgets.c)
+ * =============================================================================
+ *
+ * Widget-layer equivalents of kernel/main.c's mstr()/mtw().
+ * Every text draw call inside a widget goes through these so that
+ * badge and toast text scales with the same font_scale as panel text.
+ */
+
+static void wstr(framebuffer_t *fb, const ui_theme_t *theme,
+                 uint32_t x, uint32_t y, const char *s, uint32_t color)
+{
+    if (theme->font_scale <= 1)
+        fb_draw_string_transparent(fb, x, y, s, color);
+    else
+        fb_draw_string_scaled_transparent(fb, x, y, s, color, theme->font_scale);
+}
+
+static uint32_t wtw(const ui_theme_t *theme, const char *s)
+{
+    return fb_text_width(s) * theme->font_scale;
+}
+
 /*
  * Clamp uint32_t to 0-100 range (for percentages)
  */
@@ -519,23 +542,23 @@ void ui_draw_toast(
     ui_color_t bg, fg;
 
     switch (style) {
-        case UI_TOAST_SUCCESS:
-            bg = theme->colors.success;
-            fg = theme->colors.text_on_accent;
-            break;
-        case UI_TOAST_WARNING:
-            bg = theme->colors.warning;
-            fg = theme->colors.text_on_accent;
-            break;
-        case UI_TOAST_ERROR:
-            bg = theme->colors.error;
-            fg = theme->colors.text_on_accent;
-            break;
-        case UI_TOAST_INFO:
-        default:
-            bg = theme->colors.info;
-            fg = theme->colors.text_on_accent;
-            break;
+    case UI_TOAST_SUCCESS:
+        bg = theme->colors.success;
+        fg = theme->colors.text_on_accent;
+        break;
+    case UI_TOAST_WARNING:
+        bg = theme->colors.warning;
+        fg = theme->colors.text_on_accent;
+        break;
+    case UI_TOAST_ERROR:
+        bg = theme->colors.error;
+        fg = theme->colors.text_on_accent;
+        break;
+    case UI_TOAST_INFO:
+    default:
+        bg = theme->colors.info;
+        fg = theme->colors.text_on_accent;
+        break;
     }
 
     /* Background with shadow */
@@ -545,12 +568,12 @@ void ui_draw_toast(
                          theme->shadow.color);
     fb_fill_rounded_rect(fb, x, y, bounds.w, bounds.h, theme->radii.md, bg);
 
-    /* Centered text */
-    uint32_t text_w = fb_text_width(message);
-    uint32_t text_h = FB_CHAR_HEIGHT;
-    uint32_t text_x = x + (bounds.w - text_w) / 2;
-    uint32_t text_y = y + (bounds.h - text_h) / 2;
-    fb_draw_string_transparent(fb, text_x, text_y, message, fg);
+    /* Centred text — use scaled dimensions for correct centering */
+    uint32_t text_w = wtw(theme, message);
+    uint32_t text_h = FB_CHAR_HEIGHT * theme->font_scale;
+    uint32_t text_x = x + (bounds.w > text_w ? (bounds.w - text_w) / 2 : 0);
+    uint32_t text_y = y + (bounds.h > text_h ? (bounds.h - text_h) / 2 : 0);
+    wstr(fb, theme, text_x, text_y, message, fg);
 }
 
 

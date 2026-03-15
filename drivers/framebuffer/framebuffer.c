@@ -1604,6 +1604,36 @@ void fb_draw_string_scaled(framebuffer_t *fb, uint32_t x, uint32_t y, const char
     }
 }
 
+void fb_draw_string_scaled_transparent(framebuffer_t *fb, uint32_t x, uint32_t y,
+                                       const char *str, uint32_t fg, uint32_t scale)
+{
+    if (scale <= 1) {
+        fb_draw_string_transparent(fb, x, y, str, fg);
+        return;
+    }
+    uint32_t char_w = FB_CHAR_WIDTH * scale;
+    while (*str) {
+        if (x + char_w > fb->width) break;
+        /* Draw only set pixels — skip background pixels entirely */
+        uint8_t ch = (uint8_t)*str;
+        if (ch < 32 || ch > 126) ch = '?';
+        const uint8_t *glyph = font_8x8[ch - 32];
+        for (uint32_t row = 0; row < 8; row++) {
+            uint8_t bits = glyph[row];
+            for (uint32_t col = 0; col < 8; col++) {
+                if (bits & (0x80 >> col)) {
+                    for (uint32_t sy = 0; sy < scale; sy++)
+                        for (uint32_t sx = 0; sx < scale; sx++)
+                            fb_put_pixel(fb, x + col*scale + sx,
+                                            y + row*scale + sy, fg);
+                }
+            }
+        }
+        x += char_w;
+        str++;
+    }
+}
+
 void fb_draw_string_centered(framebuffer_t *fb, uint32_t y, const char *str, uint32_t fg, uint32_t bg)
 {
     uint32_t text_width = fb_text_width(str);
