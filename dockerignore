@@ -1,0 +1,6 @@
+target/
+output/
+.git/
+*.img
+*.bin
+*.efi

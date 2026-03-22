@@ -1,0 +1,153 @@
+#############################################################
+# Boot loader configuration for TUTORIAL-OS                 #
+# Pi Zero 2W — GPI Case 2W + HDMI dual-mode                 #
+#                                                           #
+# Auto-detection: GPIO 26 is pulled LOW by the GPI Case 2W  #
+# safe-shutdown circuit. When the case is attached, DPI     #
+# display mode is activated. When running bare-board with   #
+# HDMI, GPIO 26 floats high (internal pull-up) and HDMI     #
+# mode is used instead.                                     #
+#                                                           #
+# MANUAL OVERRIDE: If auto-detection is unreliable, comment #
+# out BOTH [gpio26=...] sections and uncomment ONE of the   #
+# MANUAL MODE blocks at the bottom of this file.            #
+#############################################################
+
+[all]
+
+###########################
+# 64-bit / Multicore      #
+###########################
+arm_64bit=1
+armstub=armstub8.bin
+kernel=kernel8.img
+
+###########################
+# UART Debug Console       #
+###########################
+enable_uart=1
+
+###########################
+# GPU Memory               #
+###########################
+gpu_mem=256
+
+###########################
+# General Display          #
+###########################
+disable_overscan=1
+
+###########################
+# LED — suppress activity  #
+###########################
+dtparam=act_led_trigger=none
+dtparam=act_led_activelow=on
+
+###########################
+# CPU Clocks (stock-safe)  #
+###########################
+# Zero 2W default is 1000 MHz — no need to restate unless
+# overclocking. Keeping sdram/gpu at defaults avoids
+# instability on marginal boards.
+arm_freq=1000
+core_freq=500
+gpu_freq=500
+
+# Minimal boot delay
+boot_delay=1
+
+
+#############################################################
+# AUTO-DETECT: GPI Case 2W attached (GPIO 26 pulled LOW)   #
+#############################################################
+[gpio26=0]
+
+# DPI 24-bit parallel RGB display
+dtoverlay=dpi24
+enable_dpi_lcd=1
+display_default_lcd=1
+
+dpi_group=2
+dpi_mode=87
+dpi_output_format=0x00016
+hdmi_timings=640 0 1 1 20 480 0 1 1 2 0 0 0 60 0 32000000 1
+
+framebuffer_width=640
+framebuffer_height=480
+
+display_rotate=0
+overscan_left=0
+overscan_right=0
+overscan_top=0
+overscan_bottom=0
+
+# GPI Case 2W audio (PWM via case speaker)
+dtoverlay=pwm-audio-pizero-gpicase
+dtparam=audio=on
+disable_audio_dither=1
+audio_pwm_mode=2
+disable_pvt=1
+
+# Blank HDMI — not in use while in case
+hdmi_blanking=1
+
+
+#############################################################
+# AUTO-DETECT: Bare board / HDMI (GPIO 26 floating HIGH)    #
+#############################################################
+[gpio26=1]
+
+# No DPI overlay — leave GPIOs free
+# enable_dpi_lcd is intentionally absent
+
+# HDMI output
+hdmi_force_hotplug=1
+hdmi_group=1
+hdmi_mode=4
+
+framebuffer_width=1280
+framebuffer_height=720
+
+# Onboard audio over HDMI
+dtparam=audio=on
+
+
+#############################################################
+# Return to global scope                                    #
+#############################################################
+[all]
+
+
+#############################################################
+# MANUAL MODE (uncomment ONE block if GPIO detection fails) #
+#############################################################
+
+# --- MANUAL: Force GPI Case 2W (DPI) ---
+#dtoverlay=dpi24
+#enable_dpi_lcd=1
+#display_default_lcd=1
+#dpi_group=2
+#dpi_mode=87
+#dpi_output_format=0x00016
+#hdmi_timings=640 0 1 1 20 480 0 1 1 2 0 0 0 60 0 32000000 1
+#framebuffer_width=640
+#framebuffer_height=480
+#display_rotate=0
+#overscan_left=0
+#overscan_right=0
+#overscan_top=0
+#overscan_bottom=0
+#dtoverlay=pwm-audio-pizero-gpicase
+#dtparam=audio=on
+#disable_audio_dither=1
+#audio_pwm_mode=2
+#disable_pvt=1
+#hdmi_blanking=1
+
+# --- MANUAL: Force HDMI ---
+hdmi_force_hotplug=1
+hdmi_group=1
+hdmi_mode=4
+framebuffer_width=1280
+framebuffer_height=720
+dtparam=audio=on
