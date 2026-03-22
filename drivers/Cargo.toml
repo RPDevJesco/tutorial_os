@@ -1,9 +1,0 @@
-[package]
-name = "drivers"
-version = "0.1.0"
-edition = "2021"
-description = "Portable architecture-independent drivers for Tutorial-OS"
-
-[dependencies]
-hal    = { path = "../hal" }
-common = { path = "../common" }

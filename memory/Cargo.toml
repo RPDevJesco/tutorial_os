@@ -1,8 +1,0 @@
-[package]
-name = "memory"
-version = "0.1.0"
-edition = "2021"
-description = "Memory management (TLSF allocator) for Tutorial-OS"
-
-[dependencies]
-common = { path = "../common" }
