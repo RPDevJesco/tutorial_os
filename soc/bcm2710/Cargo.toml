@@ -1,0 +1,11 @@
+[package]
+name = "soc-bcm2710"
+version = "0.1.0"
+edition = "2021"
+description = "BCM2710/BCM2837 HAL implementation for Tutorial-OS (Pi Zero 2W, Pi 3B)"
+
+[dependencies]
+hal    = { path = "../../hal" }
+common = { path = "../../common" }
+[build-dependencies]
+cc = "1.2.57"

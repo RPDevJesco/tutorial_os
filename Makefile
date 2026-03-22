@@ -1,19 +1,106 @@
+# =============================================================================
+# Makefile — Tutorial-OS Unified Build System
+# =============================================================================
+#
+# Two languages, one project, one entry point.
+#
+# Usage:
+#   make LANG=c    BOARD=rpi-zero2w-gpi     # C build for Pi Zero 2W
+#   make LANG=rust BOARD=rpi-zero2w         # Rust build for Pi Zero 2W
+#   make LANG=c    BOARD=milkv-mars         # C build for Milk-V Mars
+#   make LANG=rust BOARD=milkv-mars         # Rust build for Milk-V Mars
+#   make LANG=c    BOARD=lattepanda-mu      # C build for LattePanda MU
+#   make info                               # Show build configuration
+#   make clean                              # Clean all build artifacts
+#
+# How this works:
+#   LANG=c:    Traditional board.mk → soc.mk → gcc cascade.
+#              C sources live in src/ directories alongside Rust files.
+#              Assembly and linker scripts stay at crate/SoC root level.
+#
+#   LANG=rust: Delegates to build.sh which drives Cargo.
+#              cargo build -p kernel --features board-xxx --target yyy
+#              Assembly compiled via build.rs + cc crate.
+#
+# Both languages share:
+#   - boot/          Shared assembly entry points
+#   - board/         Board configs, deploy docs, boot files
+#   - soc/*/linker.ld  Linker scripts (identical for both)
+#   - soc/*/soc.mk     C build config (ignored by Cargo)
+#   - soc/*/boot_soc.S SoC-specific assembly
+#
+# =============================================================================
+
+LANG  ?= c
 BOARD ?= rpi-zero2w-gpi
+
+# =============================================================================
+# LANG=rust — Delegate to Cargo via build.sh
+# =============================================================================
+#
+# The Rust build chain is entirely Cargo-driven. The Makefile just forwards
+# the board name and gets out of the way.
+
+ifeq ($(LANG),rust)
+
+# Strip the GPi suffix for Rust board names (Rust uses board-rpi-zero2w, not board-rpi-zero2w-gpi)
+# The -gpi variant is a C-side board.mk concern (display resolution override).
+
+.PHONY: all clean info image
+
+all:
+	@./build.sh $(BOARD) release
+
+debug:
+	@./build.sh $(BOARD) debug
+
+clean:
+	@echo "Cleaning Rust build artifacts..."
+	@cargo clean 2>/dev/null || true
+	@rm -rf output/
+	@echo "Done."
+
+info:
+	@echo "Language: Rust"
+	@echo "Board:    $(BOARD)"
+	@echo "Build:    cargo build -p kernel --features board-$(BOARD) --target <arch>"
+
+image: all
+	@echo "Image creation handled by build.sh (checks board/$(BOARD)/mkimage.sh)"
+
+else
+# =============================================================================
+# LANG=c — Traditional Makefile Build
+# =============================================================================
+#
+# Source paths point into src/ directories where C files live alongside
+# Rust files. Assembly and build infrastructure stay at crate root level.
+#
+
 BUILD_DIR := build/$(BOARD)
 
+# ──── Default toolchain (ARM64, overridden by board.mk for other arches) ────
 CROSS_COMPILE ?= aarch64-none-elf-
 
 ARCH_CFLAGS  ?= -mcpu=cortex-a53 -mgeneral-regs-only
 ARCH_ASFLAGS ?=
 
+# ──── Base flags ────
+#
+# Include paths point into src/ directories where headers now live.
+# The old layout had -Icommon -Ihal etc; now it's -Icommon/src -Ihal/src.
+#
 BASE_CFLAGS := -Wall -Wextra -O2 -ffreestanding -nostdlib -nostartfiles
-BASE_CFLAGS += -I. -Ihal -Icommon -Idrivers/framebuffer -Iui/core -Iui/themes -Iui/widgets
+BASE_CFLAGS += -Ihal/src
+BASE_CFLAGS += -Icommon/src
+BASE_CFLAGS += -Idrivers/src/framebuffer
+BASE_CFLAGS += -Iui/src/core -Iui/src/themes -Iui/src/widgets
 
 LDFLAGS := -nostdlib
 
-# Include board config
+# ──── Include board config ────
 ifeq ($(wildcard board/$(BOARD)/board.mk),)
-$(error Unknown board: $(BOARD))
+$(error Unknown board: $(BOARD). Check board/ directory.)
 endif
 include board/$(BOARD)/board.mk
 
@@ -21,15 +108,18 @@ ifndef SOC
 $(error board/$(BOARD)/board.mk must set SOC)
 endif
 
-# Include SoC config
+# ──── Include SoC config ────
 ifeq ($(wildcard soc/$(SOC)/soc.mk),)
-$(error Unknown SoC: $(SOC))
+$(error Unknown SoC: $(SOC). Check soc/ directory.)
 endif
 include soc/$(SOC)/soc.mk
 
+# Validate required variables from soc.mk
 ifneq ($(BUILD_MODE),uefi)
+ifneq ($(BUILD_MODE),pico)
 ifndef LINKER_SCRIPT
 $(error soc/$(SOC)/soc.mk must set LINKER_SCRIPT)
+endif
 endif
 endif
 
@@ -37,7 +127,7 @@ ifndef KERNEL_NAME
 $(error soc/$(SOC)/soc.mk must set KERNEL_NAME)
 endif
 
-# ──── Toolchain derived AFTER includes ────
+# ──── Toolchain (derived AFTER board/soc includes) ────
 CC      := $(CROSS_COMPILE)gcc
 LD      := $(CROSS_COMPILE)ld
 OBJCOPY := $(CROSS_COMPILE)objcopy
@@ -50,18 +140,28 @@ CFLAGS  += $(SOC_INCLUDES) $(SOC_DEFINES) $(SOC_CFLAGS)
 
 ASFLAGS := $(ARCH_ASFLAGS) $(BOARD_INCLUDES) $(BOARD_DEFINES) $(SOC_INCLUDES) $(SOC_DEFINES)
 
-# Source files
-KERNEL_SOURCES := kernel/main.c
-COMMON_SOURCES := common/string.c
+# ──── Source files (paths updated for src/ layout) ────
+#
+# C sources now live in src/ subdirectories:
+#   common/string.c        → common/src/string.c
+#   kernel/main.c          → kernel/src/main.c
+#   drivers/.../fb.c       → drivers/src/framebuffer/framebuffer.c
+#   memory/allocator.c     → memory/src/allocator.c
+#   ui/widgets/ui_widgets.c → ui/src/widgets/ui_widgets.c
+#
+# Assembly and soc.mk paths are unchanged — they stay at crate root.
 
-ifneq ($(wildcard memory/allocator.c),)
-MEMORY_SOURCES := memory/allocator.c
+KERNEL_SOURCES := kernel/src/main.c
+COMMON_SOURCES := common/src/string.c
+
+ifneq ($(wildcard memory/src/allocator.c),)
+MEMORY_SOURCES := memory/src/allocator.c
 endif
 
-DRIVER_SOURCES := drivers/framebuffer/framebuffer.c
+DRIVER_SOURCES := drivers/src/framebuffer/framebuffer.c
 
-ifneq ($(wildcard ui/widgets/ui_widgets.c),)
-UI_SOURCES := ui/widgets/ui_widgets.c
+ifneq ($(wildcard ui/src/widgets/ui_widgets.c),)
+UI_SOURCES := ui/src/widgets/ui_widgets.c
 endif
 
 ALL_C_SOURCES := \
@@ -71,47 +171,47 @@ ALL_C_SOURCES := \
     $(DRIVER_SOURCES) \
     $(UI_SOURCES)
 
-# Object files
-ASM_OBJECTS  := $(patsubst %.S,$(BUILD_DIR)/%.o,$(BOOT_SOURCES))
-SOC_C_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOC_SOURCES))
-HAL_C_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(HAL_SOURCES))
-OTHER_C_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_C_SOURCES))
-ALL_OBJECTS  := $(ASM_OBJECTS) $(SOC_C_OBJECTS) $(HAL_C_OBJECTS) $(OTHER_C_OBJECTS)
+# ──── Pico SDK: CMake handles everything ────
+ifeq ($(BUILD_MODE),pico)
+ALL_C_SOURCES :=
+BOOT_SOURCES  :=
+SOC_SOURCES   :=
+HAL_SOURCES   :=
+endif
 
-# ──── Canonical output names — used in all link and objcopy rules ────
+# ──── Object files ────
+ASM_OBJECTS    := $(patsubst %.S,$(BUILD_DIR)/%.o,$(BOOT_SOURCES))
+SOC_C_OBJECTS  := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOC_SOURCES))
+HAL_C_OBJECTS  := $(patsubst %.c,$(BUILD_DIR)/%.o,$(HAL_SOURCES))
+OTHER_C_OBJECTS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(ALL_C_SOURCES))
+ALL_OBJECTS    := $(ASM_OBJECTS) $(SOC_C_OBJECTS) $(HAL_C_OBJECTS) $(OTHER_C_OBJECTS)
+
+# ──── Canonical output names ────
 ELF        := $(BUILD_DIR)/kernel.elf
 BIN        := $(BUILD_DIR)/$(KERNEL_NAME)
 BUILD_OBJS := $(ALL_OBJECTS)
 
+# =============================================================================
 # Targets
-.PHONY: all clean info disasm print-%
+# =============================================================================
+
+.PHONY: all clean info disasm image print-%
 
 all: $(BIN)
 	@echo ""
 	@echo "Build complete: $(BIN)"
 	@ls -lh $(BIN)
 
-# ──── Binary / EFI output ────
-
-# ARM64 / U-Boot binary
+# ──── Binary output (ARM64 / RISC-V) ────
 ifneq ($(BUILD_MODE),uefi)
+ifneq ($(BUILD_MODE),pico)
 $(BIN): $(ELF)
 	@echo "  OBJCOPY $@"
 	@$(OBJCOPY) $< -O binary $@
 endif
+endif
 
-# PE/COFF EFI application — x86_64 UEFI
-#
-# Pipeline: gcc → ELF (via gnu-efi elf_x86_64_efi.lds + crt0) →
-#           objcopy --target=efi-app-x86_64 → BOOTX64.EFI
-#
-# objcopy strips the ELF wrapper and rewrites the selected sections
-# into a valid PE/COFF image with correct DllCharacteristics (DYNAMIC_BASE)
-# and a properly formed .reloc table that UEFI firmware can relocate.
-#
-# Section selection mirrors what gnu-efi projects use — these are the
-# sections the EFI loader actually cares about. Anything not listed
-# (debug info, ELF metadata) is silently dropped.
+# ──── PE/COFF EFI application (x86_64 UEFI) ────
 ifeq ($(BUILD_MODE),uefi)
 $(BIN): $(ELF)
 	@echo "  EFI   $@ (objcopy ELF → PE/COFF)"
@@ -131,40 +231,17 @@ $(BIN): $(ELF)
 	@echo "  Size: $$(wc -c < $@) bytes"
 endif
 
-# ──── ELF link ────
-
-# Non-UEFI: standard ld with board linker script
+# ──── ELF link (non-UEFI) ────
 ifneq ($(BUILD_MODE),uefi)
+ifneq ($(BUILD_MODE),pico)
 $(ELF): $(BUILD_OBJS)
 	@echo "  LD    $@"
 	@mkdir -p $(dir $@)
 	$(LD) $(LDFLAGS) -T $(LINKER_SCRIPT) -o $@ $(BUILD_OBJS)
 endif
+endif
 
-# UEFI: link to ELF using gnu-efi's linker script and crt0.
-#
-# HOW THIS WORKS
-# ──────────────
-# 1. crt0-efi-x86_64.o defines _start (the real PE entry point).
-#    UEFI calls _start with ms_abi. crt0 runs _relocate(), then calls
-#    our efi_main() with System V ABI (args in RDI/RSI). This is why
-#    efi_main() does NOT need __attribute__((ms_abi)).
-#
-# 2. elf_x86_64_efi.lds produces the ELF section layout that objcopy
-#    --target=efi-app-x86_64 expects: .reloc before .data, .bss folded
-#    into .data (UEFI has no BSS concept), .hash/.gnu.hash first.
-#
-# 3. libgnuefi.a provides _relocate() (ELF self-relocation used by crt0)
-#    and uefi_call_wrapper() for ABI-safe boot service calls.
-#
-# 4. -shared -Bsymbolic: required for the ELF relocation approach.
-#    Without -shared the linker won't emit .dynamic/.dynsym/.reloc.
-#    -Bsymbolic binds all symbol references locally (no PLT indirection).
-#
-# 5. -znocombreloc: prevents the linker from merging relocation sections,
-#    which would break objcopy's ability to find .reloc.
-#
-# crt0 must be FIRST in the object list — it defines _start.
+# ──── ELF link (UEFI: gnu-efi pipeline) ────
 ifeq ($(BUILD_MODE),uefi)
 $(ELF): $(BUILD_OBJS)
 	@echo "  LD    $@ [UEFI gnu-efi pipeline]"
@@ -181,6 +258,29 @@ $(ELF): $(BUILD_OBJS)
 	    -lgnuefi
 endif
 
+# ──── Pico SDK (CMake substep) ────
+PICO_CMAKE_BUILD := $(BUILD_DIR)/cmake-build
+TARGET_PICO      := tutorial-os-pico2
+
+ifeq ($(BUILD_MODE),pico)
+$(BIN): pico-build
+	@cp $(PICO_CMAKE_BUILD)/$(TARGET_PICO).uf2 $@
+	@echo ""
+	@echo "Build complete: $@"
+	@ls -lh $@
+
+.PHONY: pico-build
+pico-build:
+	@mkdir -p $(PICO_CMAKE_BUILD)
+	@cd $(PICO_CMAKE_BUILD) && cmake \
+	    -DPICO_BOARD=$(PICO_BOARD) \
+	    -DPICO_PLATFORM=$(PICO_PLATFORM) \
+	    -DPICO_SDK_PATH=$(PICO_SDK_PATH) \
+	    -DTUTORIAL_OS_ROOT=$(CURDIR) \
+	    $(CURDIR)/soc/rp2350
+	@$(MAKE) -C $(PICO_CMAKE_BUILD) -j$$(nproc)
+endif
+
 # ──── Compilation rules ────
 
 $(BUILD_DIR)/%.o: %.S
@@ -189,7 +289,6 @@ $(BUILD_DIR)/%.o: %.S
 	@$(CC) $(ASFLAGS) -c $< -o $@
 
 # Special rule for cache.S — needs Zicbom extensions (-march override)
-# CACHE_ASFLAGS is set by board.mk for RISC-V boards only.
 ifdef CACHE_ASFLAGS
 $(BUILD_DIR)/boot/riscv64/cache.o: boot/riscv64/cache.S
 	@echo "  AS    $< (Zicbom/Zicboz)"
@@ -219,17 +318,20 @@ else
 	fi
 endif
 
-clean:
-	@echo "Cleaning build directory..."
-	@rm -rf build/
+# ──── Utility targets ────
 
-# Print any Makefile variable — used by docker-build.sh to query KERNEL_NAME
-# without hardcoding board-specific names in the script.
-# Usage: make print-KERNEL_NAME BOARD=rpi-cm5-io
+clean:
+	@echo "Cleaning all build artifacts..."
+	@rm -rf build/
+	@cargo clean 2>/dev/null || true
+	@rm -rf output/
+	@echo "Done."
+
 print-%:
 	@echo $($*)
 
 info:
+	@echo "Language:  C"
 	@echo "Board:     $(BOARD)"
 	@echo "SoC:       $(SOC)"
 	@echo "Toolchain: $(CROSS_COMPILE)"
@@ -255,3 +357,5 @@ info:
 disasm: $(ELF)
 	@$(OBJDUMP) -d $< > $(BUILD_DIR)/kernel.list
 	@echo "Disassembly: $(BUILD_DIR)/kernel.list"
+
+endif  # LANG=c

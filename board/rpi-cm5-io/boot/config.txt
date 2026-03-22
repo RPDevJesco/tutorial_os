@@ -78,6 +78,8 @@ gpu_mem_8192=64      # Pi 4 8GB / Pi 5 8GB
 max_framebuffers=4
 framebuffer_depth=32
 framebuffer_ignore_alpha=1
+framebuffer_width=1920
+framebuffer_height=1080
 
 # =============================================================================
 # ACTIVE DISPLAY — Enable exactly ONE block below.
@@ -85,9 +87,6 @@ framebuffer_ignore_alpha=1
 # -----------------------------------------------------------------------------
 # [DISPLAY: HDMI] — ACTIVE
 # -----------------------------------------------------------------------------
-dtoverlay=vc4-kms-v3d
-max_framebuffers=2
-disable_fw_kms_setup=1
 dtparam=audio=on
 
 [HDMI:0]

@@ -81,15 +81,15 @@ BOOT_SOURCES := \
 # soc_init.c        — Orchestration: UART → SBI → GPIO → PMIC → Display
 
 SOC_SOURCES := \
-	soc/jh7110/drivers/sbi.c \
-	soc/jh7110/drivers/i2c.c \
-	soc/jh7110/drivers/pmic_axp15060.c \
-	soc/jh7110/uart.c \
-	soc/jh7110/timer.c \
-	soc/jh7110/gpio.c \
-	soc/jh7110/cache.c \
-	soc/jh7110/display_simplefb.c \
-	soc/jh7110/soc_init.c
+	soc/jh7110/src/drivers/sbi.c \
+	soc/jh7110/src/drivers/i2c.c \
+	soc/jh7110/src/drivers/pmic_axp15060.c \
+	soc/jh7110/src/uart.c \
+	soc/jh7110/src/timer.c \
+	soc/jh7110/src/gpio.c \
+	soc/jh7110/src/cache.c \
+	soc/jh7110/src/display_simplefb.c \
+	soc/jh7110/src/soc_init.c
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HAL platform bridge
@@ -100,14 +100,14 @@ SOC_SOURCES := \
 # BCM2710 and Ky X1 runs unchanged here.
 
 HAL_SOURCES := \
-	soc/jh7110/hal_platform_jh7110.c
+	soc/jh7110/src/hal_platform_jh7110.c
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Include paths and defines
 # ─────────────────────────────────────────────────────────────────────────────
 
 SOC_INCLUDES := \
-	-Isoc/jh7110
+	-Isoc/jh7110/src/
 
 SOC_DEFINES := \
     -DSOC_JH7110=1 \

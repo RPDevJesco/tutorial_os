@@ -1,0 +1,12 @@
+[package]
+name = "soc-jh7110"
+version = "0.1.0"
+edition = "2021"
+description = "StarFive JH7110 HAL implementation for Tutorial-OS (Milk-V Mars)"
+
+[dependencies]
+hal    = { path = "../../hal" }
+common = { path = "../../common" }
+
+[build-dependencies]
+cc = "1.2.57"

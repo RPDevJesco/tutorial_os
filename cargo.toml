@@ -1,125 +1,24 @@
-# =============================================================================
-# Cargo.toml — Tutorial-OS Rust Build Configuration
-# =============================================================================
-#
-# This mirrors the C build system's BOARD → SOC → ARCH cascading selection.
-# In the Makefile world: `make BOARD=orangepi-rv2` pulls in board.mk → soc.mk
-# In Cargo world: `cargo build --features "board-orangepi-rv2"` does the same.
-#
-# Usage:
-#   cargo build --features "board-rpi-zero2w-gpi"    # ARM64 / BCM2710
-#   cargo build --features "board-rpi-cm4-io"         # ARM64 / BCM2711
-#   cargo build --features "board-orangepi-rv2"       # RISC-V / Ky X1
-#   cargo build --features "board-lattepanda-iota"    # x86_64 / UEFI
-#
-# Each board feature automatically enables its SoC and architecture features,
-# just like board.mk includes soc.mk in the C build.
-#
-# For cross-compilation you'll also need the appropriate target:
-#   cargo build --target aarch64-unknown-none    --features "board-rpi-zero2w-gpi"
-#   cargo build --target riscv64gc-unknown-none-elf --features "board-orangepi-rv2"
-#   cargo build --target x86_64-unknown-none     --features "board-lattepanda-iota"
-# =============================================================================
+[workspace]
+resolver = "2"
+members = [
+    "common",
+    "hal",
+    "drivers",
+    "memory",
+    "ui",
+    "kernel",
+    "soc/bcm2710",
+    "soc/jh7110",
+]
 
-[package]
-name = "tutorial-os"
-version = "0.1.0"
-edition = "2021"
-authors = ["Jesco <RPDevJesco>"]
-description = "Educational bare-metal OS teaching systems programming across ARM64, RISC-V, and x86_64"
-repository = "https://github.com/RPDevJesco/tutorial-os-refactor"
-license = "MIT"
+# Default members exclude `kernel` because it requires a bare-metal target.
+# Build it explicitly:
+#   cargo build -p kernel --features board-rpi-zero2w --target aarch64-unknown-none
+default-members = [
+    "common",
+    "hal",
+    "drivers",
+    "memory",
+    "ui",
+]
 
-# =============================================================================
-# Features — The Rust Equivalent of board.mk + soc.mk
-# =============================================================================
-#
-# THREE-TIER HIERARCHY (mirrors the C build):
-#
-#   Board features        →  enable SoC features  →  enable arch features
-#   board-rpi-zero2w-gpi  →  soc-bcm2710          →  arch-aarch64
-#   board-rpi-cm4-io      →  soc-bcm2711          →  arch-aarch64
-#   board-rpi-cm5         →  soc-bcm2712          →  arch-aarch64
-#   board-orangepi-rv2    →  soc-kyx1             →  arch-riscv64
-#   board-lattepanda-iota →  soc-lattepanda       →  arch-x86_64
-#   board-radxa-rock2a    →  soc-rk3528a          →  arch-aarch64
-#   board-libre-le-potato →  soc-s905x            →  arch-aarch64
-#
-# This means `--features "board-orangepi-rv2"` is all you ever need to pass.
-# The SoC and arch features exist so internal code can do:
-#   #[cfg(feature = "arch-riscv64")]   — architecture-level branching
-#   #[cfg(feature = "soc-bcm2710")]    — SoC-level branching
-#   #[cfg(feature = "board-rpi-zero2w-gpi")] — board-level branching
-#
-# This maps directly to the C build's:
-#   -DBOARD_RPI_ZERO2W_GPI  /  -DSOC_BCM2710  /  -DARCH_AARCH64
-
-[features]
-default = []
-
-# Architecture features (lowest tier, auto-enabled by SoC)
-arch-aarch64 = []
-arch-riscv64 = []
-arch-x86_64  = []
-
-# SoC features (middle tier, auto-enabled by board)
-soc-bcm2710     = ["arch-aarch64"]    # Pi Zero 2W, Pi 3, CM3
-soc-bcm2711     = ["arch-aarch64"]    # Pi 4, CM4, Pi 400
-soc-bcm2712     = ["arch-aarch64"]    # Pi 5, CM5
-soc-kyx1        = ["arch-riscv64"]    # SpacemiT K1 / Ky X1 (Orange Pi RV2)
-soc-rk3528a     = ["arch-aarch64"]    # Rockchip RK3528A (Radxa Rock 2A)
-soc-s905x       = ["arch-aarch64"]    # Amlogic S905X (Libre Le Potato)
-soc-lattepanda  = ["arch-x86_64"]     # LattePanda IOTA
-
-# Board features (top tier — this is what you pass on the command line)
-board-rpi-zero2w-gpi  = ["soc-bcm2710"]      # Pi Zero 2W + RetroFlag GPi Case
-board-rpi-cm4-io      = ["soc-bcm2711"]      # CM4 + IO Board
-board-rpi-cm5         = ["soc-bcm2712"]      # CM5
-board-orangepi-rv2    = ["soc-kyx1"]         # Orange Pi RV2 (RISC-V)
-board-lattepanda-iota = ["soc-lattepanda"]   # LattePanda IOTA (x86_64/UEFI)
-board-radxa-rock2a    = ["soc-rk3528a"]      # Radxa Rock 2A
-board-libre-le-potato = ["soc-s905x"]        # Libre Computer Le Potato
-
-# Display resolution presets (board features can also enable these)
-# These map to C's -DDISPLAY_WIDTH=640 -DDISPLAY_HEIGHT=480 etc.
-# Use in code: #[cfg(feature = "display-640x480")]
-display-640x480   = []    # GPi Case, small screens
-display-1280x720  = []    # 720p boards
-display-1920x1080 = []    # 1080p boards
-
-# Optional subsystem features
-# These let you build a minimal kernel or a full-featured one.
-alloc       = []          # Enable heap allocator (memory/allocator.rs)
-ui          = ["alloc"]   # Enable UI widget system (requires alloc)
-inspector   = ["ui"]      # Enable Hardware Inspector app
-3d          = ["alloc"]   # Enable 3D rendering / Z-buffer
-
-# =============================================================================
-# Dependencies
-# =============================================================================
-#
-# A bare-metal OS has NO std library dependencies. Everything here must be
-# no_std compatible. We keep this minimal — Tutorial-OS builds everything
-# from scratch to maximize educational value.
-
-[dependencies]
-# None and that's intentional.
-# The whole point is building from scratch without dependencies.
-
-# =============================================================================
-# Profile Configuration
-# =============================================================================
-#
-# Bare-metal kernels need specific optimization and panic behavior.
-# These apply regardless of which board you're targeting.
-
-[profile.dev]
-panic = "abort"           # No unwinding in bare-metal (no runtime to catch it)
-opt-level = 1             # Some optimization even in debug (bare-metal is slow at O0)
-
-[profile.release]
-panic = "abort"
-opt-level = 2             # O2 balances size and speed for embedded
-lto = true                # Link-Time Optimization — critical for small binaries
-codegen-units = 1         # Single codegen unit enables better LTO
-strip = "symbols"         # Smaller binary (remove debug symbols from release)

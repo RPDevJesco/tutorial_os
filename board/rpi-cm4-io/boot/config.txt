@@ -56,12 +56,12 @@ dtoverlay=dwc2,dr_mode=host
 # or an adapter board (see Waveshare docs).
 #
 # Force HDMI output even if no display is detected (uncomment if needed):
-#hdmi_force_hotplug=1
-#hdmi_force_hotplug:1=1
+hdmi_force_hotplug=1
+hdmi_force_hotplug:1=1
 
 # Force a specific HDMI mode (uncomment and adjust as needed):
-#hdmi_group=1
-#hdmi_mode=16          # 1080p 60Hz
+hdmi_group=1
+hdmi_mode=16          # 1080p 60Hz
 
 # -----------------------------------------------------------------------------
 # Audio

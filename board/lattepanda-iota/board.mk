@@ -20,7 +20,7 @@
 #   FAT32 partition at \EFI\BOOT\BOOTX64.EFI.
 #
 # HARDWARE (confirmed via UART log from bring-up project):
-#   CPU:     Intel N100 (AlderLake ULX), CPUID 0xB06E0, stepping A0
+#   CPU:     Intel N150 (AlderLake ULX), CPUID 0xB06E0, stepping A0
 #   Cores:   4 E-cores / 4 threads
 #   RAM:     8192 MB LPDDR5 @ 4800 MHz
 #   BIOS:    AMI Aptio LP-BS-S70NC1R200-SR-B (07/08/2024)
@@ -33,8 +33,8 @@
 #
 # =============================================================================
 
-# SoC selection — tells the Makefile to include soc/lattepanda_n100/soc.mk
-SOC := lattepanda_n100
+# SoC selection — tells the Makefile to include soc/n100/soc.mk
+SOC := n150
 
 # Architecture identifier
 ARCH := x86_64
@@ -76,7 +76,7 @@ endif
 #                       UEFI boot services have already set up SSE/AVX if needed.
 #
 # NOTE: gnu-efi-specific flags (-fpic, -fshort-wchar, -mno-red-zone, etc.)
-# live in SOC_CFLAGS in soc/lattepanda_n100/soc.mk, not here. Those flags
+# live in SOC_CFLAGS in soc/n100/soc.mk, not here. Those flags
 # are UEFI ABI requirements, not architecture requirements, so they belong
 # at the SoC layer.
 #

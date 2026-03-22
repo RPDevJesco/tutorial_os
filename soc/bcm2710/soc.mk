@@ -15,14 +15,14 @@ BOOT_SOURCES := \
 
 # SoC-specific C sources
 SOC_SOURCES := \
-    soc/bcm2710/timer.c \
-    soc/bcm2710/gpio.c \
-    soc/bcm2710/mailbox.c \
-    soc/bcm2710/soc_init.c \
-    soc/bcm2710/display_dpi.c
+    soc/bcm2710/src/timer.c \
+    soc/bcm2710/src/gpio.c \
+    soc/bcm2710/src/mailbox.c \
+    soc/bcm2710/src/soc_init.c \
+    soc/bcm2710/src/display_dpi.c
 
 # Include paths
-SOC_INCLUDES := -Isoc/bcm2710
+SOC_INCLUDES := -Isoc/bcm2710/src/
 
 # Compiler defines
 SOC_DEFINES := -DSOC_BCM2710 -DPERIPHERAL_BASE=0x3F000000

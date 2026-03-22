@@ -1,0 +1,12 @@
+[package]
+name = "hal"
+version = "0.1.0"
+edition = "2021"
+description = "Hardware Abstraction Layer traits for Tutorial-OS"
+
+# This crate defines trait contracts only — no platform-specific code,
+# no external dependencies.
+
+[lib]
+name = "hal"
+path = "src/lib.rs"

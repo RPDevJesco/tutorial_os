@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # WHAT THIS FILE DOES:
-#   1. Selects the lattepanda_n100 SoC layer (Intel N100, AlderLake ULX)
+#   1. Selects the n100 SoC layer (Intel N100, AlderLake ULX)
 #   2. Overrides the default ARM64 toolchain with x86_64
 #   3. Sets x86_64-specific compiler flags (clearing ARM64 defaults)
 #   4. Adds board-specific defines
@@ -33,8 +33,8 @@
 #
 # =============================================================================
 
-# SoC selection — tells the Makefile to include soc/lattepanda_n100/soc.mk
-SOC := lattepanda_n100
+# SoC selection — tells the Makefile to include soc/n100/soc.mk
+SOC := n100
 
 # Architecture identifier
 ARCH := x86_64
@@ -76,7 +76,7 @@ endif
 #                       UEFI boot services have already set up SSE/AVX if needed.
 #
 # NOTE: gnu-efi-specific flags (-fpic, -fshort-wchar, -mno-red-zone, etc.)
-# live in SOC_CFLAGS in soc/lattepanda_n100/soc.mk, not here. Those flags
+# live in SOC_CFLAGS in soc/n100/soc.mk, not here. Those flags
 # are UEFI ABI requirements, not architecture requirements, so they belong
 # at the SoC layer.
 #

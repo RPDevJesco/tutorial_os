@@ -25,6 +25,6 @@ output/
 Thumbs.db
 
 # Docker (don't include these in the image)
-Dockerfile
+rfiles/Dockerfile
 docker-compose.yml
 .dockerignore

@@ -1,5 +1,5 @@
 # board/rpi-zero2w-gpi/board.mk
-#
+# BCM2710: Pi Zero 2W, Pi 3B, Pi 3B+, Pi 3A+, CM3
 # Raspberry Pi Zero 2W with RetroFlag GPi Case 2W
 
 # Select SoC

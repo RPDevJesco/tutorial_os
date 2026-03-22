@@ -1,5 +1,5 @@
 # board/rpi-cm5-io/board.mk - Raspberry Pi CM5 on IO Board
-#
+# BCM2712: Pi 5, CM5
 # CM5 with bcm2712 SoC mounted on official IO board
 
 BOARD_NAME := rpi-cm5-io

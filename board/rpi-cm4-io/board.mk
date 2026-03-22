@@ -1,5 +1,5 @@
 # board/rpi-cm4-io/board.mk - Board Build Configuration
-#
+# BCM2711: Pi 4 Model B, CM4, Pi 400
 # Raspberry Pi CM4 with IO Board
 # Display: HDMI (default) or DPI via GPIO header
 
