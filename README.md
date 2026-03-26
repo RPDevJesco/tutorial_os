@@ -53,7 +53,7 @@ two languages solving the same systems problem with fundamentally different tool
 https://github.com/user-attachments/assets/3a25ab8a-6997-406c-826d-b38119a9d98b
 
 ## Directory Structure
-
+> **Recommended reading order:** Boot → Common → Memory → HAL → Drivers → UI → SoC → Board → Kernel
 ```
 tutorial-os/
 ├── hal/src/                    # Hardware Abstraction Layer interfaces
